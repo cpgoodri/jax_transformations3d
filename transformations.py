@@ -44,7 +44,8 @@ def translation_from_matrix(matrix):
   True
 
   """
-  return np.array(matrix, copy=False)[:3, 3].copy()
+  #return np.array(matrix, copy=False)[:3, 3].copy()
+  return np.array(matrix, copy=True)[:3, 3]
 
 
 def reflection_matrix(point, normal):
@@ -179,11 +180,11 @@ def rotation_from_matrix(matrix):
   # rotation angle depending on direction
   cosa = (np.trace(R33) - 1.0) / 2.0
   if abs(direction[2]) > 1e-8:
-      sina = (R[1, 0] + (cosa - 1.0) * direction[0] * direction[1]) / direction[2]
+    sina = (R[1, 0] + (cosa - 1.0) * direction[0] * direction[1]) / direction[2]
   elif abs(direction[1]) > 1e-8:
-      sina = (R[0, 2] + (cosa - 1.0) * direction[0] * direction[2]) / direction[1]
+    sina = (R[0, 2] + (cosa - 1.0) * direction[0] * direction[2]) / direction[1]
   else:
-      sina = (R[2, 1] + (cosa - 1.0) * direction[1] * direction[2]) / direction[0]
+    sina = (R[2, 1] + (cosa - 1.0) * direction[1] * direction[2]) / direction[0]
   angle = np.arctan2(sina, cosa)
   return angle, direction, point
 
@@ -769,21 +770,6 @@ def quaternion_about_axis(angle, axis):
   return q
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def quaternion_matrix(quaternion):
   """Return homogeneous rotation matrix from quaternion.
 
@@ -826,6 +812,269 @@ def quaternion_matrix(quaternion):
       [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2], 0.0],
       [                0.0,                 0.0,                 0.0, 1.0]])
   """
+
+
+def quaternion_from_matrix(matrix, isprecise=False):
+    """Return quaternion from rotation matrix.
+
+    If isprecise is True, the input matrix is assumed to be a precise rotation
+    matrix and a faster algorithm is used.
+
+    >>> q = quaternion_from_matrix(numpy.identity(4), True)
+    >>> numpy.allclose(q, [1, 0, 0, 0])
+    True
+    >>> q = quaternion_from_matrix(numpy.diag([1, -1, -1, 1]))
+    >>> numpy.allclose(q, [0, 1, 0, 0]) or numpy.allclose(q, [0, -1, 0, 0])
+    True
+    >>> R = rotation_matrix(0.123, (1, 2, 3))
+    >>> q = quaternion_from_matrix(R, True)
+    >>> numpy.allclose(q, [0.9981095, 0.0164262, 0.0328524, 0.0492786])
+    True
+    >>> R = [[-0.545, 0.797, 0.260, 0], [0.733, 0.603, -0.313, 0],
+    ...      [-0.407, 0.021, -0.913, 0], [0, 0, 0, 1]]
+    >>> q = quaternion_from_matrix(R)
+    >>> numpy.allclose(q, [0.19069, 0.43736, 0.87485, -0.083611])
+    True
+    >>> R = [[0.395, 0.362, 0.843, 0], [-0.626, 0.796, -0.056, 0],
+    ...      [-0.677, -0.498, 0.529, 0], [0, 0, 0, 1]]
+    >>> q = quaternion_from_matrix(R)
+    >>> numpy.allclose(q, [0.82336615, -0.13610694, 0.46344705, -0.29792603])
+    True
+    >>> R = random_rotation_matrix()
+    >>> q = quaternion_from_matrix(R)
+    >>> is_same_transform(R, quaternion_matrix(q))
+    True
+    >>> is_same_quaternion(quaternion_from_matrix(R, isprecise=False),
+    ...                    quaternion_from_matrix(R, isprecise=True))
+    True
+    >>> R = euler_matrix(0.0, 0.0, numpy.pi/2.0)
+    >>> is_same_quaternion(quaternion_from_matrix(R, isprecise=False),
+    ...                    quaternion_from_matrix(R, isprecise=True))
+    True
+
+    """
+    M = np.array(matrix, dtype=np.float64, copy=False)[:4, :4]
+    if isprecise:
+      q = np.empty((4, ))
+      t = np.trace(M)
+      
+      def case1(Mt):
+        M, t = Mt
+        return np.array([t,
+          M[2, 1] - M[1, 2],
+          M[0, 2] - M[2, 0],
+          M[1, 0] - M[0, 1]]), t
+      def case2(Mtq):
+        M, t, qtemp = Mtq
+        i, j, k = lax.cond( M[1,1] > M[0,0],
+            (1,2,0), lambda x: x,
+            (0,1,2), lambda x: x)
+        i, j, k = lax.cond( M[2,2] > M[i,i],
+            (2,0,1), lambda x: x,
+            (i,j,k), lambda x: x)
+        t = M[i, i] - (M[j, j] + M[k, k]) + M[3, 3]
+        qtemp = index_update(qtemp, index[i], t)
+        qtemp = index_update(qtemp, index[j], M[i, j] + M[j, i])
+        qtemp = index_update(qtemp, index[k], M[k, i] + M[i, k])
+        qtemp = index_update(qtemp, index[3], M[k, j] - M[j, k])
+        qtemp = qtemp[[3, 0, 1, 2]]
+        return qtemp, t
+      
+      q, t = lax.cond(t > M[3, 3],
+          (M,t), case1,
+          (M,t,q), case2)
+
+
+
+      """
+      if t > M[3, 3]:
+        q = np.array([t,
+          M[2, 1] - M[1, 2],
+          M[0, 2] - M[2, 0],
+          M[1, 0] - M[0, 1]])
+
+        #q[0] = t
+        #q[3] = M[1, 0] - M[0, 1]
+        #q[2] = M[0, 2] - M[2, 0]
+        #q[1] = M[2, 1] - M[1, 2]
+      else:
+        i, j, k = lax.cond( M[1,1] > M[0,0],
+            (1,2,0), lambda x: x,
+            (0,1,2), lambda x: x)
+        i, j, k = lax.cond( M[2,2] > M[i,i],
+            (2,0,1), lambda x: x,
+            (i,j,k), lambda x: x)
+        #i, j, k = 0, 1, 2
+        #if M[1, 1] > M[0, 0]:
+        #  i, j, k = 1, 2, 0
+        #if M[2, 2] > M[i, i]:
+        #  i, j, k = 2, 0, 1
+        t = M[i, i] - (M[j, j] + M[k, k]) + M[3, 3]
+        q = index_update(q, index[i], t)
+        #q[i] = t
+        q = index_update(q, index[j], M[i, j] + M[j, i])
+        #q[j] = M[i, j] + M[j, i]
+        q = index_update(q, index[k], M[k, i] + M[i, k])
+        #q[k] = M[k, i] + M[i, k]
+        q = index_update(q, index[3], M[k, j] - M[j, k])
+        #q[3] = M[k, j] - M[j, k]
+        q = q[[3, 0, 1, 2]]
+      """
+      q = q * (0.5 / np.sqrt(t * M[3, 3]))
+    else:
+      m00 = M[0, 0]
+      m01 = M[0, 1]
+      m02 = M[0, 2]
+      m10 = M[1, 0]
+      m11 = M[1, 1]
+      m12 = M[1, 2]
+      m20 = M[2, 0]
+      m21 = M[2, 1]
+      m22 = M[2, 2]
+      # symmetric matrix K
+      K = np.array([[m00-m11-m22, 0.0,         0.0,         0.0],
+                       [m01+m10,     m11-m00-m22, 0.0,         0.0],
+                       [m02+m20,     m12+m21,     m22-m00-m11, 0.0],
+                       [m21-m12,     m02-m20,     m10-m01,     m00+m11+m22]])
+      K /= 3.0
+      # quaternion is eigenvector of K that corresponds to largest eigenvalue
+      w, V = np.linalg.eigh(K, UPLO='L', symmetrize_input=False)
+      q = V[[3, 0, 1, 2], np.argmax(w)]
+    #q = q * np.sign(q[0])
+    q = lax.cond( q[0] < 0.0,
+        -1.0 * q, lambda x: x,
+        q, lambda x: x)
+    #if q[0] < 0.0:
+    #  q = np.negative(q)
+    return q
+
+
+def quaternion_multiply(quaternion1, quaternion0):
+  """Return multiplication of two quaternions.
+
+  >>> q = quaternion_multiply([4, 1, -2, 3], [8, -5, 6, 7])
+  >>> numpy.allclose(q, [28, -44, -14, 48])
+  True
+
+  """
+  w0, x0, y0, z0 = quaternion0
+  w1, x1, y1, z1 = quaternion1
+  return np.array([
+      -x1*x0 - y1*y0 - z1*z0 + w1*w0,
+      x1*w0 + y1*z0 - z1*y0 + w1*x0,
+      -x1*z0 + y1*w0 + z1*x0 + w1*y0,
+      x1*y0 - y1*x0 + z1*w0 + w1*z0], dtype=np.float64)
+
+
+def quaternion_conjugate(quaternion):
+  """Return conjugate of quaternion.
+
+  >>> q0 = random_quaternion()
+  >>> q1 = quaternion_conjugate(q0)
+  >>> q1[0] == q0[0] and all(q1[1:] == -q0[1:])
+  True
+
+  """
+  q = np.array(quaternion, dtype=np.float64, copy=True)
+  q = index_update(q, index[1:], -q[1:])
+  #numpy.negative(q[1:], q[1:])
+  return q
+
+
+def quaternion_inverse(quaternion):
+  """Return inverse of quaternion.
+
+  >>> q0 = random_quaternion()
+  >>> q1 = quaternion_inverse(q0)
+  >>> numpy.allclose(quaternion_multiply(q0, q1), [1, 0, 0, 0])
+  True
+
+  """
+  #q = np.array(quaternion, dtype=numpy.float64, copy=True)
+  #numpy.negative(q[1:], q[1:])
+  q = quaternion_conjugate(quaternion)
+  return q / np.dot(q, q)
+
+
+def quaternion_real(quaternion):
+  """Return real part of quaternion.
+
+  >>> quaternion_real([3, 0, 1, 2])
+  3.0
+
+  """
+  return quaternion[0]
+  #return np.float64(quaternion[0])
+
+
+def quaternion_imag(quaternion):
+  """Return imaginary part of quaternion.
+
+  >>> quaternion_imag([3, 0, 1, 2])
+  array([ 0.,  1.,  2.])
+
+  """
+  return np.array(quaternion[1:4], dtype=np.float64, copy=True)
+
+
+def quaternion_slerp(quat0, quat1, fraction, spin=0, shortestpath=True):
+  print("WARNING: not implemented.")
+  raise NotImplementedError
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1019,7 +1268,7 @@ def random_vector(size):
   False
 
   """
-  return np.array(onp.random.random(size))
+  return np.array(onp.random.random(size), dtype=np.float64)
 
 
 def vector_product(v0, v1, axis=0):
