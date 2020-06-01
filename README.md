@@ -32,7 +32,7 @@ Functionality:
 `euler_from_quaternion(quaternion, axes='sxyz')` | X | X |
 `quaternion_from_euler(ai, aj, ak, axes='sxyz')` | X | X |
 `quaternion_about_axis(angle, axis)` | X | X |
-`quaternion_matrix(quaternion)` | X | |
+`quaternion_matrix(quaternion)` | X | X |
 `quaternion_from_matrix(matrix, isprecise=False)` | X | X |
 `quaternion_multiply(quaternion1, quaternion0)` | X | X |
 `quaternion_conjugate(quaternion)` | X | X |
@@ -51,7 +51,6 @@ Functionality:
 `concatenate_matrices(\*matrices)` | X | |
 `is_same_transform(matrix0, matrix1)` | X*** | |
 `is_same_quaternion(q0, q1)` | X*** | |
-
 
 \*When `rand=None`, automatically sets `rand=onp.random.rand(3)`, which is not JAX compatible
 
