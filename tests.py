@@ -467,6 +467,15 @@ class TransformationsTest(jtu.JaxTestCase):
       M1 = Rot.from_quat(_convert_quaternion(q)).as_matrix()
       self.assertAllClose(M0, M1, False)
 
+  def test_jit_quaternion_matrix(self):
+    jquaternion_matrix = jit(quaternion_matrix)
+    for _ in range(5):
+      q = random_quaternion()
+      M0 = quaternion_matrix(q)
+      M1 = jquaternion_matrix(q)
+      self.assertAllClose(M0, M1, True)
+
+
 
   def test_quaternion_from_matrix(self):
     q = quaternion_from_matrix(np.identity(4), True)
