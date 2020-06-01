@@ -1247,11 +1247,9 @@ def unit_vector(data, axis=None, out=None):
   #np.sqrt(length, length)
   length = np.sqrt(length)
   if axis is not None:
-    assert(False)
-    #length = numpy.expand_dims(length, axis)
+    length = np.expand_dims(length, axis)
   data /= length
-  if out is None:
-    return data
+  return data
 
 
 def random_vector(size):

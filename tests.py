@@ -5,7 +5,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 from jax import test_util as jtu
-from jax import jit, grad, vmap
+from jax import jit, grad, vmap, random
 
 from jax.config import config as jax_config
 jax_config.parse_flags_with_absl()
@@ -604,6 +604,52 @@ class TransformationsTest(jtu.JaxTestCase):
 
 
 
+  def test_random_quaternion(self):
+    q = random_quaternion()
+    self.assertAllClose(1.0, vector_norm(q), False)
+    assert(len(q.shape)==1)
+    assert(q.shape[0]==4)
+    
+    q = random_quaternion(onp.random.random(3))
+    self.assertAllClose(1.0, vector_norm(q), False)
+    assert(len(q.shape)==1)
+    assert(q.shape[0]==4)
+    
+    key = random.PRNGKey(0)
+    rand = random.uniform(key, (3,), minval=0.0, maxval=1.0, dtype=np.float64) 
+    q = random_quaternion(rand)
+    self.assertAllClose(1.0, vector_norm(q), False)
+    assert(len(q.shape)==1)
+    assert(q.shape[0]==4)
+
+  def test_jit_random_quaternion(self):
+    key = random.PRNGKey(0)
+    rand = random.uniform(key, (3,), minval=0.0, maxval=1.0, dtype=np.float64) 
+    q = jit(random_quaternion)(rand)
+    self.assertAllClose(1.0, vector_norm(q), False)
+    assert(len(q.shape)==1)
+    assert(q.shape[0]==4)
+
+  
+  def test_random_rotation_matrix(self):
+    R = random_rotation_matrix()
+    self.assertAllClose(np.dot(R.T, R), np.identity(4), True)
+
+    rand = onp.random.random(3)
+    R = random_rotation_matrix(rand)
+    self.assertAllClose(np.dot(R.T, R), np.identity(4), True)
+
+    key = random.PRNGKey(0)
+    rand = random.uniform(key, (3,), minval=0.0, maxval=1.0, dtype=np.float64) 
+    R = random_rotation_matrix(rand)
+    self.assertAllClose(np.dot(R.T, R), np.identity(4), True)
+
+  def test_jit_random_rotation_matrix(self):
+    key = random.PRNGKey(0)
+    rand = random.uniform(key, (3,), minval=0.0, maxval=1.0, dtype=np.float64) 
+    R = random_rotation_matrix(rand)
+    self.assertAllClose(np.dot(R.T, R), np.identity(4), True)
+
 
 
   def test_vector_norm(self):
@@ -621,12 +667,32 @@ class TransformationsTest(jtu.JaxTestCase):
     self.assertAllClose(0.0, vector_norm([]), False)
     self.assertAllClose(1.0, vector_norm([1]), False)
 
+  def test_jit_vector_norm(self):
+    v = random_vector(3)
+    n0 = vector_norm(v)
+    n1 = jit(vector_norm)(v)
+    self.assertAllClose(n0, n1, True)
+    
+    v = np.array(onp.random.rand(6, 5, 3))
+    n0 = vector_norm(v, axis=-1)
+    n1 = jit(vector_norm, static_argnums=1)(v, -1)
+    self.assertAllClose(n0, n1, True)
+
 
   def test_unit_vector(self):
     v0 = random_vector(3)
     v1 = unit_vector(v0)
     self.assertAllClose(v1, v0 / np.linalg.norm(v0), True)
     self.assertAllClose(unit_vector([1]), np.array([1.0]), True)
+    
+    v0 = onp.random.rand(5, 4, 3)
+    v1 = unit_vector(v0, axis=-1)
+    v2 = v0 / np.expand_dims(np.sqrt(np.sum(v0*v0, axis=2)), 2)
+    self.assertAllClose(v1, v2, True)
+
+    v1 = unit_vector(v0, axis=1)
+    v2 = v0 / np.expand_dims(np.sqrt(np.sum(v0*v0, axis=1)), 1)
+    self.assertAllClose(v1, v2, True)
 
   def test_jit_unit_vector(self):
     v = random_vector(3)
@@ -634,18 +700,48 @@ class TransformationsTest(jtu.JaxTestCase):
     v1 = jit(unit_vector)(v)
     self.assertAllClose(v0, v1, True)
 
+    v0 = onp.random.rand(5, 4, 3)
+    v1 = unit_vector(v0, axis=-1)
+    v2 = jit(unit_vector, static_argnums=1)(v0, -1)
+    self.assertAllClose(v1, v2, True)
+
+    v1 = unit_vector(v0, axis=1)
+    v2 = jit(unit_vector, static_argnums=1)(v0, 1)
+    self.assertAllClose(v1, v2, True)
+
+
+
 
   def test_vector_product(self):
     v = vector_product([2, 0, 0], [0, 3, 0])
     self.assertAllClose(v, np.array([0, 0, 6]), False)
+    
     v0 = [[2, 0, 0, 2], [0, 2, 0, 2], [0, 0, 2, 2]]
     v1 = [[3], [0], [0]]
     v = vector_product(v0, v1)
     self.assertAllClose(v, np.array([[0, 0, 0, 0], [0, 0, 6, 6], [0, -6, 0, -6]]), False)
+
     v0 = [[2, 0, 0], [2, 0, 0], [0, 2, 0], [2, 0, 0]]
     v1 = [[0, 3, 0], [0, 0, 3], [0, 0, 3], [3, 3, 3]]
     v = vector_product(v0, v1, axis=1)
     self.assertAllClose(v, np.array([[0, 0, 6], [0, -6, 0], [6, 0, 0], [0, -6, 6]]), False)
+
+  def test_jit_vector_product(self):
+    v0 = vector_product([2, 0, 0], [0, 3, 0])
+    v1 = jit(vector_product)([2, 0, 0], [0, 3, 0])
+    self.assertAllClose(v0, v1, True)
+
+    t0 = [[2, 0, 0, 2], [0, 2, 0, 2], [0, 0, 2, 2]]
+    t1 = [[3], [0], [0]]
+    v0 = vector_product(t0, t1)
+    v1 = jit(vector_product)(t0, t1)
+    self.assertAllClose(v0, v1, True)
+    
+    t0 = [[2, 0, 0], [2, 0, 0], [0, 2, 0], [2, 0, 0]]
+    t1 = [[0, 3, 0], [0, 0, 3], [0, 0, 3], [3, 3, 3]]
+    v0 = vector_product(t0, t1, axis=1)
+    v1 = jit(vector_product, static_argnums=2)(t0, t1, 1)
+    self.assertAllClose(v0, v1, True)
 
 
   def angle_between_vectors(self):
@@ -664,7 +760,7 @@ class TransformationsTest(jtu.JaxTestCase):
     v1 = [[0, 3, 0], [0, 0, 3], [0, 0, 3], [3, 3, 3]]
     a = angle_between_vectors(v0, v1, axis=1)
     self.assertAllClose(a, np.array([1.5708, 1.5708, 1.5708, 0.95532]), True)
-
+  
 
   def test_inverse_matrix(self):
     M0 = random_rotation_matrix()
