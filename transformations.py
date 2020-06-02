@@ -869,7 +869,7 @@ def random_quaternion(rand=None, key=None):
                       np.cos(t1)*r1, np.sin(t2)*r2])
 
 
-def random_rotation_matrix(rand=None):
+def random_rotation_matrix(rand=None, key=None):
   """Return uniform random rotation matrix.
 
   rand: array like
@@ -877,7 +877,7 @@ def random_rotation_matrix(rand=None):
       between 0 and 1 for each returned quaternion.
 
   """
-  return quaternion_matrix(random_quaternion(rand))
+  return quaternion_matrix(random_quaternion(rand, key))
 
 
 # epsilon for testing whether a number is close to zero
