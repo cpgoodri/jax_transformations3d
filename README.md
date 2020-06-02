@@ -4,7 +4,7 @@
 
 
 
-Functionality:
+Original Functionality:
 
 |function | basic implementation | jit-tested | grad-tested | vmap-tested |
 | ------- |:--------------------:|:----------:|:-----------:|:-----------:|
@@ -40,21 +40,27 @@ Functionality:
 `quaternion_real(quaternion)` | X | X |
 `quaternion_imag(quaternion)` | X | X |
 `quaternion_slerp(quat0, quat1, fraction, spin=0, shortestpath=True)` | | |
-`random_quaternion(rand=None)` | partial onp dependence* | X |
-`random_rotation_matrix(rand=None)` | partial onp dependence* | X |
+`random_quaternion(rand=None, key=None)` | X | X |
+`random_rotation_matrix(rand=None, key=None)` | X | X |
 `class Arcball` and related methods | | |
-`vector_norm(data, axis=None, out=None)` | X** | X |
-`unit_vector(data, axis=None, out=None)` | X** | X |
-`random_vector(size)` | full onp dependence | |
+`vector_norm(data, axis=None, out=None)` | X* | X |
+`unit_vector(data, axis=None, out=None)` | X* | X |
+`random_vector(size, key=None)` | full onp dependence | |
 `vector_product(v0, v1, axis=0)` | X | X |
 `angle_between_vectors(v0, v1, directed=True, axis=0)` | X | |
 `inverse_matrix(matrix)` | X | |
 `concatenate_matrices(\*matrices)` | X | |
-`is_same_transform(matrix0, matrix1)` | X*** | |
-`is_same_quaternion(q0, q1)` | X*** | |
+`is_same_transform(matrix0, matrix1)` | X** | |
+`is_same_quaternion(q0, q1)` | X** | |
 
-\*When `rand=None`, automatically sets `rand=onp.random.rand(3)`, which is not JAX compatible
+\*Only implemented for `out=None`
 
-\*\*Only implemented for `out=None`
+\*\*Need to add tests
 
-\*\*\*Need to add tests
+
+New Functionality:
+
+|function | basic implementation | jit-tested | grad-tested | vmap-tested |
+| ------- |:--------------------:|:----------:|:-----------:|:-----------:|
+`apply_matrix(M, v)` | X | X | | |
+`apply_quaternion(q, v)` | X | X | | |
