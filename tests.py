@@ -625,6 +625,11 @@ class TransformationsTest(jtu.JaxTestCase):
     assert(q.shape[0]==4)
     
     key = random.PRNGKey(0)
+    q = random_quaternion(key = key)
+    self.assertAllClose(1.0, vector_norm(q), False)
+    assert(len(q.shape)==1)
+    assert(q.shape[0]==4)
+
     rand = random.uniform(key, (3,), minval=0.0, maxval=1.0, dtype=np.float64) 
     q = random_quaternion(rand)
     self.assertAllClose(1.0, vector_norm(q), False)
@@ -633,6 +638,13 @@ class TransformationsTest(jtu.JaxTestCase):
 
   def test_jit_random_quaternion(self):
     key = random.PRNGKey(0)
+    
+    q = jit(random_quaternion)(key = key)
+    self.assertAllClose(1.0, vector_norm(q), False)
+    assert(len(q.shape)==1)
+    assert(q.shape[0]==4)
+
+
     rand = random.uniform(key, (3,), minval=0.0, maxval=1.0, dtype=np.float64) 
     q = jit(random_quaternion)(rand)
     self.assertAllClose(1.0, vector_norm(q), False)
@@ -782,11 +794,54 @@ class TransformationsTest(jtu.JaxTestCase):
       self.assertAllClose(M1, np.linalg.inv(M0), True)
 
 
-
   def test_concatenate_matrices(self):
     M = np.array(onp.random.rand(16).reshape((4, 4)) - 0.5)
     self.assertAllClose(M, concatenate_matrices(M), True)
     self.assertAllClose(np.dot(M, M.T), concatenate_matrices(M, M.T), True)
+
+
+  def test_matrix_apply_and_quaternion_apply(self):
+    key = random.PRNGKey(0)
+    key, split1, split2 = random.split(key,3)
+    q = random_quaternion()
+    M = quaternion_matrix(q)
+    v3  = random.uniform(split1, (3,), minval=-1.0, maxval=1.0, dtype=np.float64) 
+    v4  = np.pad(v3, (0,1), mode='constant', constant_values=1.0)
+    vm3 = random.uniform(split2, (10,3), minval=-1.0, maxval=1.0, dtype=np.float64) 
+    vm4 = np.pad(vm3, ((0,0),(0,1)), mode='constant', constant_values=1.0)
+
+    for v in [v3,v4,vm3,vm4]:
+      vrot_m = matrix_apply(M,v)
+      vrot_q = quaternion_apply(q,v)
+      self.assertAllClose(vrot_m, vrot_q, True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -797,6 +852,8 @@ class TransformationsTest(jtu.JaxTestCase):
     matrix1 = np.array(matrix1, dtype=np.float64, copy=True)
     matrix1 /= matrix1[3, 3]
     return self.assertAllClose(matrix0, matrix1, False)
+
+
 
 
 
