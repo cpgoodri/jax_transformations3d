@@ -975,8 +975,8 @@ def quaternion_conjugate(quaternion):
   True
 
   """
-  q = np.array(quaternion, dtype=np.float64, copy=True)
-  q = index_update(q, index[1:], -q[1:])
+  #q = np.array(quaternion, dtype=np.float64, copy=True)
+  q = index_update(quaternion, index[1:], -quaternion[1:])
   #numpy.negative(q[1:], q[1:])
   return q
 
