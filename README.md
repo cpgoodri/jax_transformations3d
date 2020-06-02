@@ -1,5 +1,5 @@
 # jax_transformations3d
- implementation of transformations.py that is JAX compatible
+ Implementation of transformations.py that is JAX compatible. 
 
 
 
@@ -42,6 +42,7 @@ Functionality:
 `quaternion_slerp(quat0, quat1, fraction, spin=0, shortestpath=True)` | | |
 `random_quaternion(rand=None)` | partial onp dependence* | X |
 `random_rotation_matrix(rand=None)` | partial onp dependence* | X |
+`class Arcball` and related methods | | |
 `vector_norm(data, axis=None, out=None)` | X** | X |
 `unit_vector(data, axis=None, out=None)` | X** | X |
 `random_vector(size)` | full onp dependence | |
