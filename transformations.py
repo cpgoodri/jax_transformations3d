@@ -951,14 +951,21 @@ def unit_vector(data, axis=None, out=None):
   return data
 
 
-def random_vector(size, key=None):
+def random_vector(shape, key=None):
   """Return array of random doubles in the half-open interval [0.0, 1.0).
-  #COMMENT(cpgoodri): not jax compatible... TODO
-  #TODO(cpgoodri): tests
+  Jax-compatible only if key is not None
+  shape can be an int or a tuple
+  This cannot be jitted, not 100% sure why
 
   """
+  if(not isinstance(shape, tuple)):
+    shape = (shape,)
+
   if(key is None):
-    return np.array(onp.random.random(size), dtype=np.float64)
+    return np.array(onp.random.random(shape), dtype=np.float64)
+  else:
+    return random.uniform(key, shape, minval=0.0, maxval=1.0, dtype=np.float64)
+
 
 
 def vector_product(v0, v1, axis=0):

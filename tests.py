@@ -731,6 +731,38 @@ class TransformationsTest(jtu.JaxTestCase):
     self.assertAllClose(v1, v2, True)
 
 
+  def test_random_vector(self):
+    v = random_vector(10000)
+    assert(np.all(v >= 0) and np.all(v < 1))
+    v0 = random_vector(10)
+    v1 = random_vector(10)
+    assert( not any(v0 == v1) )
+
+    key = random.PRNGKey(0)
+    key, split1, split2, split3 = random.split(key,4)
+    v = random_vector(10000, split1)
+    assert(np.all(v >= 0) and np.all(v < 1))
+    v0 = random_vector(10, split2)
+    v1 = random_vector(10, split3)
+    assert( not any(v0 == v1) )
+
+  """
+  def test_jit_random_vector(self):
+    jrandom_vector = jit(random_vector, static_argnums=1)
+    key = random.PRNGKey(0)
+    key, split1, split2, split3 = random.split(key,4)
+    v = jrandom_vector((10000,), split1)
+    assert(np.all(v >= 0) and np.all(v < 1))
+    v0 = jrandom_vector((10,), split2)
+    v1 = jrandom_vector((10,), split3)
+    assert( not any(v0 == v1) )
+  """
+
+
+
+
+
+
 
 
   def test_vector_product(self):
