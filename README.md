@@ -1,10 +1,14 @@
 # jax_transformations3d
- Implementation of transformations.py that is JAX compatible. 
+JAX compatible 3d transformations. Create and convert between 4x4 transformation matrices, quaternions and euler angles. Both the API and underlying code are heavily based on Christoph Gohlke's transformation package transformations.py, though there is some additional functionality and not all functions in transformations.py are implemented (yet). Documentation is currently lacking, please see tests.py for extensive examples. 
+
+jax_transformations3d is under development, expect sharp edges and changes that break the current API.
+
+Suggestions, bugs, feature requests, and contributions are welcome!
 
 
 
 
-Original Functionality:
+Implementation of original Functionality:
 
 |function | basic implementation | jit-tested | grad-tested | vmap-tested |
 | ------- |:--------------------:|:----------:|:-----------:|:-----------:|
