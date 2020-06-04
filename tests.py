@@ -737,14 +737,24 @@ class TransformationsTest(jtu.JaxTestCase):
     v0 = random_vector(10)
     v1 = random_vector(10)
     assert( not any(v0 == v1) )
+    
+    v = random_vector((10000, 5))
+    assert(np.all(v >= 0) and np.all(v < 1))
+    assert(v.shape == (10000, 5))
+
 
     key = random.PRNGKey(0)
-    key, split1, split2, split3 = random.split(key,4)
+    key, split1, split2, split3, split4 = random.split(key,5)
     v = random_vector(10000, split1)
     assert(np.all(v >= 0) and np.all(v < 1))
     v0 = random_vector(10, split2)
     v1 = random_vector(10, split3)
     assert( not any(v0 == v1) )
+    
+    v = random_vector((10000, 5), split4)
+    assert(np.all(v >= 0) and np.all(v < 1))
+    assert(v.shape == (10000, 5))
+
 
   """
   def test_jit_random_vector(self):
