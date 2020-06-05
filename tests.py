@@ -858,7 +858,23 @@ class TransformationsTest(jtu.JaxTestCase):
       self.assertAllClose(vrot_m, vrot_q, True)
 
 
+  def test_quaternion_apply_shapes(self):
+    key = random.PRNGKey(0)
+    m = 10
+    l = 6
+    key, *splits = random.split(key,m+1)
+    qs = vmap(random_quaternion, in_axes=(None,0))(None,np.array(splits))
+    key, split = random.split(key)
+    vs = random_vector((m,l), split)
 
+    shape = quaternion_apply(qs[0], vs[0]).shape
+    assert(shape == (l,))
+    shape = quaternion_apply(qs, vs[0]).shape
+    assert(shape == (m,l))
+    shape = quaternion_apply(qs[0], vs).shape
+    assert(shape == (m,l))
+    shape = quaternion_apply(qs, vs).shape
+    assert(shape == (m,l))
 
 
 

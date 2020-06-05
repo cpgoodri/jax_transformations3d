@@ -1079,29 +1079,62 @@ def quaternion_apply(q, v, index_start=0):
       v[index_start:index_start+3] or v[:,index_start:index_start+3]. All
       elements outside this range are ignored and copied into the returned
       array.
+
   Return:
-    Rotated vector or array of rotated vectors, with shape equal to v.shape.
+    Rotated vector or array of rotated vectors. The precise meaning depends
+    on the shapes of the input arrays:
+
+    q.shape==(4,) and v.shape==(l,) --> output.shape==(l,)
+      rotate v by q
+    q.shape==(m,4) and v.shape==(l,) --> output.shape==(m,l)
+      rotate v by each q
+    q.shape==(4,) and v.shape==(m,l) --> output.shape==(m,l)
+      rotate each v by q
+    q.shape==(m,4) and v.shape==(m,l) --> output.shape==(m,l)
+      rotate the ith v by the ith q
+
   """
 
-  if(q.shape[-1] != 4):
-    raise ValueError('q must have shape (4,) or (m,4)')
-  if(v.shape[-1] < 3):
-    raise ValueError('v must have shape (l,) or (m,l) with l>=3')
+  if( not (len(q.shape) == 1 or len(q.shape) == 2) ):
+    raise ValueError('q must either have 1 or 2 dimensions')
+  if( q.shape[-1] != 4 ):
+    raise ValueError('last dimension of q must have length 4')
+  if( not (len(v.shape) == 1 or len(v.shape) == 2) ):
+    raise ValueError('v must either have 1 or 2 dimensions')
+  if( v.shape[-1] < 3 ):
+    raise ValueError('last dimension of v must have length greater than or equal to 3')
+  if( len(v.shape) == 2 and len(q.shape) == 2):
+    if( v.shape[0] != q.shape[0]):
+      raise ValueError('incompatible number of quaternions and vectors')
 
-  def qapply(quat,v1):
-    v_as_quat = np.pad(v1[index_start:index_start+3], (1,0), mode='constant',  constant_values=0.)
+  def qapply(quat,vec):
+    vec_as_quat = np.pad(vec[index_start:index_start+3], (1,0), mode='constant',  constant_values=0.)
     #COMMENT(cpgoodri): it might be more efficient to do this by hand
-    v1_rot = quaternion_multiply(
-        quat,quaternion_multiply(v_as_quat,quaternion_conjugate(quat)))[1:]
-    return index_update(v1, index[index_start:index_start+3], v1_rot)
+    vec_rot = quaternion_multiply(
+        quat,quaternion_multiply(vec_as_quat,quaternion_conjugate(quat)))[1:]
+    return index_update(vec, index[index_start:index_start+3], vec_rot)
 
-  if(len(q.shape) == 1):
+
+  if( len(q.shape) == 1 and len(v.shape) == 1 ):
+    apply_fn = qapply
+  elif( len(q.shape) == 2 and len(v.shape) == 1 ):
+    apply_fn = vmap(qapply,in_axes=(0,None))
+  elif( len(q.shape) == 1 and len(v.shape) == 2 ):
     apply_fn = vmap(qapply,in_axes=(None,0))
-  elif(len(q.shape) == 2):
+  elif( len(q.shape) == 2 and len(v.shape) == 2 ):
     apply_fn = vmap(qapply,in_axes=(0,0))
   else:
-    raise ValueError('q must have shape (4,) or (m,4)')
-  return np.reshape(apply_fn(q, np.atleast_2d(v)),v.shape)
+    raise AssertionError('Should be impossible to get here.')
+
+  return apply_fn(q, v)
+  
+  #if(len(q.shape) == 1):
+  #  apply_fn = vmap(qapply,in_axes=(None,0))
+  #elif(len(q.shape) == 2):
+  #  apply_fn = vmap(qapply,in_axes=(0,0))
+  #else:
+  #  raise ValueError('q must have shape (4,) or (m,4)')
+  #return np.reshape(apply_fn(q, np.atleast_2d(v)),v.shape)
 
 
 
