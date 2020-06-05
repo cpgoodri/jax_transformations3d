@@ -1,5 +1,5 @@
-from transformations import *
-from transformations import _AXES2TUPLE
+from jax_transformations3d import *
+from jax_transformations3d import _AXES2TUPLE
 
 from absl.testing import absltest
 from absl.testing import parameterized
