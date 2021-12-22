@@ -640,7 +640,7 @@ def quaternion_from_matrix(matrix, isprecise=False):
         qtemp = index_update(qtemp, index[j], M[i, j] + M[j, i])
         qtemp = index_update(qtemp, index[k], M[k, i] + M[i, k])
         qtemp = index_update(qtemp, index[3], M[k, j] - M[j, k])
-        qtemp = qtemp[[3, 0, 1, 2]]
+        qtemp = qtemp[jnp.array([3, 0, 1, 2])]
         return qtemp, t
       
       q, t = lax.cond(t > M[3, 3],
