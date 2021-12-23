@@ -19,7 +19,8 @@ def translation_matrix(direction):
 
   """
   M = jnp.identity(4)
-  M = index_update(M, index[:3,3], direction[:3])
+  #M = index_update(M, index[:3,3], direction[:3])
+  M = M.at[:3,3].set(direction[:3])
   return M
 
 
@@ -37,8 +38,10 @@ def reflection_matrix(point, normal):
   """
   normal = unit_vector(normal[:3])
   M = jnp.identity(4)
-  M = index_add(M, index[:3,:3], -2.0*jnp.outer(normal,normal))
-  M = index_update(M, index[:3,3], (2.0 * jnp.dot(point[:3], normal)) * normal)
+  M = M.at[:3,:3].add(-2.0*jnp.outer(normal,normal))
+  #M = index_add(M, index[:3,:3], -2.0*jnp.outer(normal,normal))
+  M = M.at[:3,3].set((2.0 * jnp.dot(point[:3], normal)) * normal)
+  #M = index_update(M, index[:3,3], (2.0 * jnp.dot(point[:3], normal)) * normal)
   #M[:3, :3] -= 2.0 * numpy.outer(normal, normal)
   #M[:3, 3] = (2.0 * numpy.dot(point[:3], normal)) * normal
   return M
@@ -80,11 +83,13 @@ def rotation_matrix(angle, direction, point=None):
                     [ direction[2], 0.0,          -direction[0]],
                     [-direction[1], direction[0],  0.0]])
   M = jnp.identity(4)
-  M = index_update(M, index[:3, :3], R)
+  M = M.at[:3, :3].set(R)
+  #M = index_update(M, index[:3, :3], R)
   if point is not None:
     # rotation not around origin
     point = jnp.array(point[:3], dtype=jnp.float64, copy=False)
-    M = index_update(M, index[:3, 3], point - jnp.dot(R, point))
+    M = M.at[:3, 3].set(point - jnp.dot(R, point))
+    #M = index_update(M, index[:3, 3], point - jnp.dot(R, point))
   return M
 
 
@@ -129,9 +134,9 @@ def scale_matrix(factor, origin=None, direction=None):
     # uniform scaling
     M = jnp.diag(jnp.array([factor, factor, factor, 1.0]))
     if origin is not None:
-      #COMMENT(@cpgoodri): these should probably be combined...
-      M = index_update(M, index[:3, 3], origin[:3])
-      M = index_update(M, index[:3, 3], M[:3, 3] * (1.0 - factor))
+      M = M.at[:3, 3].set(origin[:3] * (1.0 - factor))
+      #M = index_update(M, index[:3, 3], origin[:3])
+      #M = index_update(M, index[:3, 3], M[:3, 3] * (1.0 - factor))
       #M[:3, 3] = origin[:3]
       #M[:3, 3] *= 1.0 - factor
   else:
@@ -139,10 +144,12 @@ def scale_matrix(factor, origin=None, direction=None):
     direction = unit_vector(direction[:3])
     factor = 1.0 - factor
     M = jnp.identity(4)
-    M = index_add(M, index[:3, :3], -factor * jnp.outer(direction, direction))
+    M = M.at[:3, :3].add(-factor * jnp.outer(direction, direction))
+    #M = index_add(M, index[:3, :3], -factor * jnp.outer(direction, direction))
     #M[:3, :3] -= factor * jnp.outer(direction, direction)
     if origin is not None:
-      M = index_update(M, index[:3, 3], (factor * jnp.dot(origin[:3], direction)) * direction)
+      M = M.at[:3, 3].set((factor * jnp.dot(origin[:3], direction)) * direction)
+      #M = index_update(M, index[:3, 3], (factor * jnp.dot(origin[:3], direction)) * direction)
       #M[:3, 3] = (factor * numpy.dot(origin[:3], direction)) * direction
   return M
 
@@ -193,28 +200,40 @@ def projection_matrix(point, normal, direction=None,
     # perspective projection
     perspective = jnp.array(perspective[:3], dtype=jnp.float64, copy=False)
     temp = jnp.dot(perspective-point, normal)
-    M = index_update(M, index[0, 0], temp)
-    M = index_update(M, index[1, 1], temp)
-    M = index_update(M, index[2, 2], temp)
-    M = index_add(M, index[:3, :3], -jnp.outer(perspective, normal))
+    M = M.at[0, 0].set(temp)
+    M = M.at[1, 1].set(temp)
+    M = M.at[2, 2].set(temp)
+    M = M.at[:3, :3].add(-jnp.outer(perspective, normal))
+    #M = index_update(M, index[0, 0], temp)
+    #M = index_update(M, index[1, 1], temp)
+    #M = index_update(M, index[2, 2], temp)
+    #M = index_add(M, index[:3, :3], -jnp.outer(perspective, normal))
     if pseudo:
       # preserve relative depth
-      M = index_add(M, index[:3, :3], -jnp.outer(normal, normal))
-      M = index_update(M, index[:3, 3], jnp.dot(point, normal) * (perspective+normal))
+      M = M.at[:3, :3].add(-jnp.outer(normal, normal))
+      #M = index_add(M, index[:3, :3], -jnp.outer(normal, normal))
+      M = M.at[:3, 3].set(jnp.dot(point, normal) * (perspective+normal))
+      #M = index_update(M, index[:3, 3], jnp.dot(point, normal) * (perspective+normal))
     else:
-      M = index_update(M, index[:3, 3], jnp.dot(point, normal) * perspective)
-    M = index_update(M, index[3, :3], -normal)
-    M = index_update(M, index[3, 3], jnp.dot(perspective, normal))
+      M = M.at[:3, 3].set(jnp.dot(point, normal) * perspective)
+      #M = index_update(M, index[:3, 3], jnp.dot(point, normal) * perspective)
+    M = M.at[3, :3].set(-normal)
+    #M = index_update(M, index[3, :3], -normal)
+    M = M.at[3, 3].set(jnp.dot(perspective, normal))
+    #M = index_update(M, index[3, 3], jnp.dot(perspective, normal))
   elif direction is not None:
     # parallel projection
     direction = jnp.array(direction[:3], dtype=jnp.float64, copy=False)
     scale = jnp.dot(direction, normal)
-    M = index_add(M, index[:3, :3], -jnp.outer(direction, normal) / scale)
-    M = index_update(M, index[:3, 3], direction * (jnp.dot(point, normal) / scale))
+    M = M.at[:3, :3].add(-jnp.outer(direction, normal) / scale)
+    #M = index_add(M, index[:3, :3], -jnp.outer(direction, normal) / scale)
+    M = M.at[:3, 3].set(direction * (jnp.dot(point, normal) / scale))
   else:
     # orthogonal projection
-    M = index_add(M, index[:3, :3], -jnp.outer(normal, normal))
-    M = index_update(M, index[:3, 3], jnp.dot(point, normal) * normal)
+    M = M.at[:3, :3].add(-jnp.outer(normal, normal))
+    #M = index_add(M, index[:3, :3], -jnp.outer(normal, normal))
+    M = M.at[:3, 3].set(jnp.dot(point, normal) * normal)
+    #M = index_update(M, index[:3, 3], jnp.dot(point, normal) * normal)
   return M
 
 
@@ -294,9 +313,11 @@ def shear_matrix(angle, direction, point, normal):
     raise ValueError('direction and normal vectors are not orthogonal')
   angle = jnp.tan(angle)
   M = jnp.identity(4)
-  M = index_add(M, index[:3, :3], angle * jnp.outer(direction, normal))
+  M = M.at[:3, :3].add(angle * jnp.outer(direction, normal))
+  #M = index_add(M, index[:3, :3], angle * jnp.outer(direction, normal))
   #M[:3, :3] += angle * numpy.outer(direction, normal)
-  M = index_update(M, index[:3, 3], -angle * jnp.dot(point[:3], normal) * direction)
+  M = M.at[:3, 3].set(-angle * jnp.dot(point[:3], normal) * direction)
+  #M = index_update(M, index[:3, 3], -angle * jnp.dot(point[:3], normal) * direction)
   #M[:3, 3] = -angle * numpy.dot(point[:3], normal) * direction
   return M
 
@@ -391,42 +412,42 @@ def euler_matrix(ai, aj, ak, axes='sxyz'):
 
   M = jnp.identity(4)
   if repetition:
-    M = index_update(M, index[i, i], cj)
+    M = M.at[i, i].set(cj)
     #M[i, i] = cj
-    M = index_update(M, index[i, j], sj*si)
+    M = M.at[i, j].set(sj*si)
     #M[i, j] = sj*si
-    M = index_update(M, index[i, k], sj*ci)
+    M = M.at[i, k].set(sj*ci)
     #M[i, k] = sj*ci
-    M = index_update(M, index[j, i], sj*sk)
+    M = M.at[j, i].set(sj*sk)
     #M[j, i] = sj*sk
-    M = index_update(M, index[j, j], -cj*ss+cc)
+    M = M.at[j, j].set(-cj*ss+cc)
     #M[j, j] = -cj*ss+cc
-    M = index_update(M, index[j, k], -cj*cs-sc)
+    M = M.at[j, k].set(-cj*cs-sc)
     #M[j, k] = -cj*cs-sc
-    M = index_update(M, index[k, i], -sj*ck)
+    M = M.at[k, i].set(-sj*ck)
     #M[k, i] = -sj*ck
-    M = index_update(M, index[k, j], cj*sc+cs)
+    M = M.at[k, j].set(cj*sc+cs)
     #M[k, j] = cj*sc+cs
-    M = index_update(M, index[k, k], cj*cc-ss)
+    M = M.at[k, k].set(cj*cc-ss)
     #M[k, k] = cj*cc-ss
   else:
-    M = index_update(M, index[i, i], cj*ck)
+    M = M.at[i, i].set(cj*ck)
     #M[i, i] = cj*ck
-    M = index_update(M, index[i, j], sj*sc-cs)
+    M = M.at[i, j].set(sj*sc-cs)
     #M[i, j] = sj*sc-cs
-    M = index_update(M, index[i, k], sj*cc+ss)
+    M = M.at[i, k].set(sj*cc+ss)
     #M[i, k] = sj*cc+ss
-    M = index_update(M, index[j, i], cj*sk)
+    M = M.at[j, i].set(cj*sk)
     #M[j, i] = cj*sk
-    M = index_update(M, index[j, j], sj*ss+cc)
+    M = M.at[j, j].set(sj*ss+cc)
     #M[j, j] = sj*ss+cc
-    M = index_update(M, index[j, k], sj*cs-sc)
+    M = M.at[j, k].set(sj*cs-sc)
     #M[j, k] = sj*cs-sc
-    M = index_update(M, index[k, i], -sj)
+    M = M.at[k, i].set(-sj)
     #M[k, i] = -sj
-    M = index_update(M, index[k, j], cj*si)
+    M = M.at[k, j].set(cj*si)
     #M[k, j] = cj*si
-    M = index_update(M, index[k, k], cj*ci)
+    M = M.at[k, k].set(cj*ci)
     #M[k, k] = cj*ci
   return M
 
@@ -535,25 +556,26 @@ def quaternion_from_euler(ai, aj, ak, axes='sxyz'):
 
   q = jnp.empty((4, ))
   if repetition:
-    q = index_update(q, index[0], cj*(cc - ss))
+    q = q.at[0].set(cj*(cc - ss))
     #q[0] = cj*(cc - ss)
-    q = index_update(q, index[i], cj*(cs + sc))
+    q = q.at[i].set(cj*(cs + sc))
     #q[i] = cj*(cs + sc)
-    q = index_update(q, index[j], sj*(cc + ss))
+    q = q.at[j].set(sj*(cc + ss))
     #q[j] = sj*(cc + ss)
-    q = index_update(q, index[k], sj*(cs - sc))
+    q = q.at[k].set(sj*(cs - sc))
     #q[k] = sj*(cs - sc)
   else:
-    q = index_update(q, index[0], cj*cc + sj*ss)
+    q = q.at[0].set(cj*cc + sj*ss)
     #q[0] = cj*cc + sj*ss
-    q = index_update(q, index[i], cj*sc - sj*cs)
+    q = q.at[i].set(cj*sc - sj*cs)
     #q[i] = cj*sc - sj*cs
-    q = index_update(q, index[j], cj*ss + sj*cc)
+    q = q.at[j].set(cj*ss + sj*cc)
     #q[j] = cj*ss + sj*cc
-    q = index_update(q, index[k], cj*cs - sj*sc)
+    q = q.at[k].set(cj*cs - sj*sc)
     #q[k] = cj*cs - sj*sc
   if parity:
-    q = index_update(q, index[j], -1.0 * q[j])
+    q = q.at[j].multiply(-1.0)
+    #q = index_update(q, index[j], -1.0 * q[j])
     #q[j] *= -1.0
 
   return q
@@ -570,7 +592,8 @@ def quaternion_about_axis(angle, axis):
       q, lambda x: x)
   #if qlen > _EPS:
   #  q *= math.sin(angle/2.0) / qlen
-  q = index_update(q, index[0], jnp.cos(angle/2.0))
+  q = q.at[0].set(jnp.cos(angle/2.0))
+  #q = index_update(q, index[0], jnp.cos(angle/2.0))
   #q[0] = math.cos(angle/2.0)
   return q
 
@@ -636,10 +659,10 @@ def quaternion_from_matrix(matrix, isprecise=False):
             (2,0,1), lambda x: x,
             (i,j,k), lambda x: x)
         t = M[i, i] - (M[j, j] + M[k, k]) + M[3, 3]
-        qtemp = index_update(qtemp, index[i], t)
-        qtemp = index_update(qtemp, index[j], M[i, j] + M[j, i])
-        qtemp = index_update(qtemp, index[k], M[k, i] + M[i, k])
-        qtemp = index_update(qtemp, index[3], M[k, j] - M[j, k])
+        qtemp = qtemp.at[i].set(t)
+        qtemp = qtemp.at[j].set(M[i, j] + M[j, i])
+        qtemp = qtemp.at[k].set(M[k, i] + M[i, k])
+        qtemp = qtemp.at[3].set(M[k, j] - M[j, k])
         qtemp = qtemp[jnp.array([3, 0, 1, 2])]
         return qtemp, t
       
@@ -730,7 +753,8 @@ def quaternion_conjugate(quaternion):
 
   """
   #q = jnp.array(quaternion, dtype=jnp.float64, copy=True)
-  q = index_update(quaternion, index[1:], -quaternion[1:])
+  q = quaternion.at[1:].set(-quaternion[1:])
+  #q = index_update(quaternion, index[1:], -quaternion[1:])
   #numpy.negative(q[1:], q[1:])
   return q
 
@@ -1112,7 +1136,8 @@ def quaternion_apply(q, v, index_start=0):
     #COMMENT(cpgoodri): it might be more efficient to do this by hand
     vec_rot = quaternion_multiply(
         quat,quaternion_multiply(vec_as_quat,quaternion_conjugate(quat)))[1:]
-    return index_update(vec, index[index_start:index_start+3], vec_rot)
+    return vec.at[index_start:index_start+3].set(vec_rot)
+    #return index_update(vec, index[index_start:index_start+3], vec_rot)
 
 
   if( len(q.shape) == 1 and len(v.shape) == 1 ):

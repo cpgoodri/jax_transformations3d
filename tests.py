@@ -318,6 +318,7 @@ class TransformationsTest(jtu.JaxTestCase):
     normal = jnp.cross(direct, random_vector(3))
     S0 = shear_matrix(angle, direct, point, normal)
     angle, direct, point, normal = shear_from_matrix(S0)
+    #print( angle, direct, point, normal)
     S1 = shear_matrix(angle, direct, point, normal)
     assert(is_same_transform(S0, S1))
 
@@ -350,7 +351,8 @@ class TransformationsTest(jtu.JaxTestCase):
       for a,t,s in zip(axes_list, tuple_list, scipy_axes_list):
         Ma = euler_matrix(angles[0], angles[1], angles[2], a)
         Mt = euler_matrix(angles[0], angles[1], angles[2], t)
-        Ms = index_update(jnp.identity(4), index[:3, :3], jnp.array(Rot.from_euler(s, angles).as_matrix()))
+        Ms = jnp.identity(4).at[:3, :3].set(jnp.array(Rot.from_euler(s, angles).as_matrix()))
+        #Ms = index_update(jnp.identity(4), index[:3, :3], jnp.array(Rot.from_euler(s, angles).as_matrix()))
         assert(is_same_transform(Ma, Mt))
         assert(is_same_transform(Ma, Ms))
 
