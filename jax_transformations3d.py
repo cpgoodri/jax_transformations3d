@@ -4,15 +4,17 @@ from jax.ops import index, index_add, index_update
 from jax import lax, vmap, random
 import math
 
+
 def _raiseValueError(msg):
   raise ValueError(msg)
+
 
 def identity_matrix():
   """Return 4x4 identity/unit matrix.
 
   """
   return jnp.identity(4)
-  
+
 
 def translation_matrix(direction):
   """Return matrix to translate by direction vector.
@@ -20,7 +22,7 @@ def translation_matrix(direction):
   """
   M = jnp.identity(4)
   #M = index_update(M, index[:3,3], direction[:3])
-  M = M.at[:3,3].set(direction[:3])
+  M = M.at[:3, 3].set(direction[:3])
   return M
 
 
@@ -38,9 +40,9 @@ def reflection_matrix(point, normal):
   """
   normal = unit_vector(normal[:3])
   M = jnp.identity(4)
-  M = M.at[:3,:3].add(-2.0*jnp.outer(normal,normal))
+  M = M.at[:3, :3].add(-2.0 * jnp.outer(normal, normal))
   #M = index_add(M, index[:3,:3], -2.0*jnp.outer(normal,normal))
-  M = M.at[:3,3].set((2.0 * jnp.dot(point[:3], normal)) * normal)
+  M = M.at[:3, 3].set((2.0 * jnp.dot(point[:3], normal)) * normal)
   #M = index_update(M, index[:3,3], (2.0 * jnp.dot(point[:3], normal)) * normal)
   #M[:3, :3] -= 2.0 * numpy.outer(normal, normal)
   #M[:3, 3] = (2.0 * numpy.dot(point[:3], normal)) * normal
@@ -79,9 +81,9 @@ def rotation_matrix(angle, direction, point=None):
   R = jnp.diag(jnp.array([cosa, cosa, cosa]))
   R = R + jnp.outer(direction, direction) * (1.0 - cosa)
   direction = direction * sina
-  R = R + jnp.array([[ 0.0,         -direction[2],  direction[1]],
-                    [ direction[2], 0.0,          -direction[0]],
-                    [-direction[1], direction[0],  0.0]])
+  R = R + jnp.array([[0.0, -direction[2], direction[1]],
+                     [direction[2], 0.0, -direction[0]],
+                     [-direction[1], direction[0], 0.0]])
   M = jnp.identity(4)
   M = M.at[:3, :3].set(R)
   #M = index_update(M, index[:3, :3], R)
@@ -167,7 +169,7 @@ def scale_from_matrix(matrix):
     i = jnp.where(abs(jnp.real(w) - factor) < 1e-8)[0][0]
     direction = jnp.real(V[:, i]).squeeze()
     direction /= vector_norm(direction)
-  
+
   #WARNING(@cpgoodri): I'm not sure if this error-handling approach works with JAX, but it seems to pass tests...
   except IndexError:
     # uniform scaling
@@ -183,8 +185,11 @@ def scale_from_matrix(matrix):
   return factor, origin, direction
 
 
-def projection_matrix(point, normal, direction=None,
-                    perspective=None, pseudo=False):
+def projection_matrix(point,
+                      normal,
+                      direction=None,
+                      perspective=None,
+                      pseudo=False):
   """Return matrix to project onto plane defined by point and normal.
 
   Using either perspective point, projection direction, or none of both.
@@ -199,7 +204,7 @@ def projection_matrix(point, normal, direction=None,
   if perspective is not None:
     # perspective projection
     perspective = jnp.array(perspective[:3], dtype=jnp.float64, copy=False)
-    temp = jnp.dot(perspective-point, normal)
+    temp = jnp.dot(perspective - point, normal)
     M = M.at[0, 0].set(temp)
     M = M.at[1, 1].set(temp)
     M = M.at[2, 2].set(temp)
@@ -212,7 +217,7 @@ def projection_matrix(point, normal, direction=None,
       # preserve relative depth
       M = M.at[:3, :3].add(-jnp.outer(normal, normal))
       #M = index_add(M, index[:3, :3], -jnp.outer(normal, normal))
-      M = M.at[:3, 3].set(jnp.dot(point, normal) * (perspective+normal))
+      M = M.at[:3, 3].set(jnp.dot(point, normal) * (perspective + normal))
       #M = index_update(M, index[:3, 3], jnp.dot(point, normal) * (perspective+normal))
     else:
       M = M.at[:3, 3].set(jnp.dot(point, normal) * perspective)
@@ -274,11 +279,10 @@ def projection_from_matrix(matrix, pseudo=False):
     # perspective projection
     i = jnp.where(abs(jnp.real(w)) > 1e-8)[0]
     if not len(i):
-      raise ValueError(
-          'no eigenvector not corresponding to eigenvalue 0')
+      raise ValueError('no eigenvector not corresponding to eigenvalue 0')
     point = jnp.real(V[:, i[-1]]).squeeze()
     point /= point[3]
-    normal = - M[3, :3]
+    normal = -M[3, :3]
     perspective = M[:3, 3] / jnp.dot(point[:3], normal)
     if pseudo:
       perspective -= normal
@@ -288,7 +292,6 @@ def projection_from_matrix(matrix, pseudo=False):
 def clip_matrix(left, right, bottom, top, near, far, perspective=False):
   print("WARNING: not implemented.")
   raise NotImplementedError
-
 
 
 def shear_matrix(angle, direction, point, normal):
@@ -305,7 +308,7 @@ def shear_matrix(angle, direction, point, normal):
   """
   normal = unit_vector(normal[:3])
   direction = unit_vector(direction[:3])
-  
+
   #lax.cond(jnp.abs(jnp.dot(normal, direction)) > 1e-6,
   #    'direction and normal vectors are not orthogonal', _raiseValueError,
   #    None, lambda x: None)
@@ -362,7 +365,10 @@ def decompose_matrix(matrix):
   raise NotImplementedError
 
 
-def compose_matrix(scale=None, shear=None, angles=None, translate=None,
+def compose_matrix(scale=None,
+                   shear=None,
+                   angles=None,
+                   translate=None,
                    perspective=None):
   print("WARNING: not implemented.")
   raise NotImplementedError
@@ -397,8 +403,8 @@ def euler_matrix(ai, aj, ak, axes='sxyz'):
     firstaxis, parity, repetition, frame = axes
 
   i = firstaxis
-  j = _NEXT_AXIS[i+parity]
-  k = _NEXT_AXIS[i-parity+1]
+  j = _NEXT_AXIS[i + parity]
+  k = _NEXT_AXIS[i - parity + 1]
 
   if frame:
     ai, ak = ak, ai
@@ -407,47 +413,47 @@ def euler_matrix(ai, aj, ak, axes='sxyz'):
 
   si, sj, sk = jnp.sin(ai), jnp.sin(aj), jnp.sin(ak)
   ci, cj, ck = jnp.cos(ai), jnp.cos(aj), jnp.cos(ak)
-  cc, cs = ci*ck, ci*sk
-  sc, ss = si*ck, si*sk
+  cc, cs = ci * ck, ci * sk
+  sc, ss = si * ck, si * sk
 
   M = jnp.identity(4)
   if repetition:
     M = M.at[i, i].set(cj)
     #M[i, i] = cj
-    M = M.at[i, j].set(sj*si)
+    M = M.at[i, j].set(sj * si)
     #M[i, j] = sj*si
-    M = M.at[i, k].set(sj*ci)
+    M = M.at[i, k].set(sj * ci)
     #M[i, k] = sj*ci
-    M = M.at[j, i].set(sj*sk)
+    M = M.at[j, i].set(sj * sk)
     #M[j, i] = sj*sk
-    M = M.at[j, j].set(-cj*ss+cc)
+    M = M.at[j, j].set(-cj * ss + cc)
     #M[j, j] = -cj*ss+cc
-    M = M.at[j, k].set(-cj*cs-sc)
+    M = M.at[j, k].set(-cj * cs - sc)
     #M[j, k] = -cj*cs-sc
-    M = M.at[k, i].set(-sj*ck)
+    M = M.at[k, i].set(-sj * ck)
     #M[k, i] = -sj*ck
-    M = M.at[k, j].set(cj*sc+cs)
+    M = M.at[k, j].set(cj * sc + cs)
     #M[k, j] = cj*sc+cs
-    M = M.at[k, k].set(cj*cc-ss)
+    M = M.at[k, k].set(cj * cc - ss)
     #M[k, k] = cj*cc-ss
   else:
-    M = M.at[i, i].set(cj*ck)
+    M = M.at[i, i].set(cj * ck)
     #M[i, i] = cj*ck
-    M = M.at[i, j].set(sj*sc-cs)
+    M = M.at[i, j].set(sj * sc - cs)
     #M[i, j] = sj*sc-cs
-    M = M.at[i, k].set(sj*cc+ss)
+    M = M.at[i, k].set(sj * cc + ss)
     #M[i, k] = sj*cc+ss
-    M = M.at[j, i].set(cj*sk)
+    M = M.at[j, i].set(cj * sk)
     #M[j, i] = cj*sk
-    M = M.at[j, j].set(sj*ss+cc)
+    M = M.at[j, j].set(sj * ss + cc)
     #M[j, j] = sj*ss+cc
-    M = M.at[j, k].set(sj*cs-sc)
+    M = M.at[j, k].set(sj * cs - sc)
     #M[j, k] = sj*cs-sc
     M = M.at[k, i].set(-sj)
     #M[k, i] = -sj
-    M = M.at[k, j].set(cj*si)
+    M = M.at[k, j].set(cj * si)
     #M[k, j] = cj*si
-    M = M.at[k, k].set(cj*ci)
+    M = M.at[k, k].set(cj * ci)
     #M[k, k] = cj*ci
   return M
 
@@ -467,16 +473,17 @@ def euler_from_matrix(matrix, axes='sxyz'):
     firstaxis, parity, repetition, frame = axes
 
   i = firstaxis
-  j = _NEXT_AXIS[i+parity]
-  k = _NEXT_AXIS[i-parity+1]
+  j = _NEXT_AXIS[i + parity]
+  k = _NEXT_AXIS[i - parity + 1]
 
   M = jnp.array(matrix, dtype=jnp.float64, copy=False)[:3, :3]
   if repetition:
-    sy = jnp.sqrt(M[i, j]*M[i, j] + M[i, k]*M[i, k])
-    ax, ay, az = lax.cond(sy > _EPS,
-        (jnp.arctan2(M[i, j],M[i, k]), jnp.arctan2(sy,M[i, i]), jnp.arctan2(M[j, i],-M[k, i])), lambda x: x,
-        (jnp.arctan2(-M[j, k],M[j, j]), jnp.arctan2(sy,M[i, i]), 0.0), lambda x: x)
-
+    sy = jnp.sqrt(M[i, j] * M[i, j] + M[i, k] * M[i, k])
+    ax, ay, az = lax.cond(
+        sy > _EPS, (jnp.arctan2(M[i, j], M[i, k]), jnp.arctan2(
+            sy, M[i, i]), jnp.arctan2(M[j, i], -M[k, i])), lambda x: x,
+        (jnp.arctan2(-M[j, k], M[j, j]), jnp.arctan2(sy, M[i, i]), 0.0),
+        lambda x: x)
     """
     if sy > _EPS:
       ax = jnp.arctan2( M[i, j],  M[i, k])
@@ -488,11 +495,12 @@ def euler_from_matrix(matrix, axes='sxyz'):
       az = 0.0
     """
   else:
-    cy = jnp.sqrt(M[i, i]*M[i, i] + M[j, i]*M[j, i])
-    ax, ay, az = lax.cond( cy > _EPS,
-        (jnp.arctan2(M[k, j], M[k, k]), jnp.arctan2(-M[k, i], cy), jnp.arctan2(M[j, i], M[i, i])), lambda x: x,
-        (jnp.arctan2(-M[j, k], M[j, j]), jnp.arctan2(-M[k, i], cy), 0.0), lambda x: x)
-
+    cy = jnp.sqrt(M[i, i] * M[i, i] + M[j, i] * M[j, i])
+    ax, ay, az = lax.cond(
+        cy > _EPS, (jnp.arctan2(M[k, j], M[k, k]), jnp.arctan2(
+            -M[k, i], cy), jnp.arctan2(M[j, i], M[i, i])), lambda x: x,
+        (jnp.arctan2(-M[j, k], M[j, j]), jnp.arctan2(-M[k, i], cy), 0.0),
+        lambda x: x)
     """
     if cy > _EPS:
       ax = jnp.arctan2( M[k, j],  M[k, k])
@@ -532,8 +540,8 @@ def quaternion_from_euler(ai, aj, ak, axes='sxyz'):
     firstaxis, parity, repetition, frame = axes
 
   i = firstaxis + 1
-  j = _NEXT_AXIS[i+parity-1] + 1
-  k = _NEXT_AXIS[i-parity] + 1
+  j = _NEXT_AXIS[i + parity - 1] + 1
+  k = _NEXT_AXIS[i - parity] + 1
 
   if frame:
     ai, ak = ak, ai
@@ -549,29 +557,29 @@ def quaternion_from_euler(ai, aj, ak, axes='sxyz'):
   sj = jnp.sin(aj)
   ck = jnp.cos(ak)
   sk = jnp.sin(ak)
-  cc = ci*ck
-  cs = ci*sk
-  sc = si*ck
-  ss = si*sk
+  cc = ci * ck
+  cs = ci * sk
+  sc = si * ck
+  ss = si * sk
 
-  q = jnp.empty((4, ))
+  q = jnp.empty((4,))
   if repetition:
-    q = q.at[0].set(cj*(cc - ss))
+    q = q.at[0].set(cj * (cc - ss))
     #q[0] = cj*(cc - ss)
-    q = q.at[i].set(cj*(cs + sc))
+    q = q.at[i].set(cj * (cs + sc))
     #q[i] = cj*(cs + sc)
-    q = q.at[j].set(sj*(cc + ss))
+    q = q.at[j].set(sj * (cc + ss))
     #q[j] = sj*(cc + ss)
-    q = q.at[k].set(sj*(cs - sc))
+    q = q.at[k].set(sj * (cs - sc))
     #q[k] = sj*(cs - sc)
   else:
-    q = q.at[0].set(cj*cc + sj*ss)
+    q = q.at[0].set(cj * cc + sj * ss)
     #q[0] = cj*cc + sj*ss
-    q = q.at[i].set(cj*sc - sj*cs)
+    q = q.at[i].set(cj * sc - sj * cs)
     #q[i] = cj*sc - sj*cs
-    q = q.at[j].set(cj*ss + sj*cc)
+    q = q.at[j].set(cj * ss + sj * cc)
     #q[j] = cj*ss + sj*cc
-    q = q.at[k].set(cj*cs - sj*sc)
+    q = q.at[k].set(cj * cs - sj * sc)
     #q[k] = cj*cs - sj*sc
   if parity:
     q = q.at[j].multiply(-1.0)
@@ -588,11 +596,10 @@ def quaternion_about_axis(angle, axis):
   q = jnp.array([0.0, axis[0], axis[1], axis[2]])
   qlen = vector_norm(q)
   q = lax.cond(qlen > _EPS,
-      q * jnp.sin(angle/2.0) / qlen, lambda x: x,
-      q, lambda x: x)
+               q * jnp.sin(angle / 2.0) / qlen, lambda x: x, q, lambda x: x)
   #if qlen > _EPS:
   #  q *= math.sin(angle/2.0) / qlen
-  q = q.at[0].set(jnp.cos(angle/2.0))
+  q = q.at[0].set(jnp.cos(angle / 2.0))
   #q = index_update(q, index[0], jnp.cos(angle/2.0))
   #q[0] = math.cos(angle/2.0)
   return q
@@ -609,16 +616,13 @@ def quaternion_matrix(quaternion):
     q, n = qn
     q *= jnp.sqrt(2.0 / n)
     q = jnp.outer(q, q)
-    return jnp.array([
-        [1.0-q[2, 2]-q[3, 3],     q[1, 2]-q[3, 0],     q[1, 3]+q[2, 0], 0.0],
-        [    q[1, 2]+q[3, 0], 1.0-q[1, 1]-q[3, 3],     q[2, 3]-q[1, 0], 0.0],
-        [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2], 0.0],
-        [                0.0,                 0.0,                 0.0, 1.0]])
+    return jnp.array(
+        [[1.0 - q[2, 2] - q[3, 3], q[1, 2] - q[3, 0], q[1, 3] + q[2, 0], 0.0],
+         [q[1, 2] + q[3, 0], 1.0 - q[1, 1] - q[3, 3], q[2, 3] - q[1, 0], 0.0],
+         [q[1, 3] - q[2, 0], q[2, 3] + q[1, 0], 1.0 - q[1, 1] - q[2, 2], 0.0],
+         [0.0, 0.0, 0.0, 1.0]])
 
-  return lax.cond( n < _EPS,
-      jnp.identity(4), lambda x: x,
-      (q,n), calc_mat_posn)
-
+  return lax.cond(n < _EPS, jnp.identity(4), lambda x: x, (q, n), calc_mat_posn)
   """
   if n < _EPS:
       return jnp.identity(4)
@@ -633,46 +637,38 @@ def quaternion_matrix(quaternion):
 
 
 def quaternion_from_matrix(matrix, isprecise=False):
-    """Return quaternion from rotation matrix.
+  """Return quaternion from rotation matrix.
 
-    If isprecise is True, the input matrix is assumed to be a precise rotation
-    matrix and a faster algorithm is used.
+  If isprecise is True, the input matrix is assumed to be a precise rotation
+  matrix and a faster algorithm is used.
 
+  """
+  M = jnp.array(matrix, dtype=jnp.float64, copy=False)[:4, :4]
+  if isprecise:
+    q = jnp.empty((4,))
+    t = jnp.trace(M)
+
+    def case1(Mt):
+      M, t = Mt
+      return jnp.array(
+          [t, M[2, 1] - M[1, 2], M[0, 2] - M[2, 0], M[1, 0] - M[0, 1]]), t
+
+    def case2(Mtq):
+      M, t, qtemp = Mtq
+      i, j, k = lax.cond(M[1, 1] > M[0, 0], (1, 2, 0), lambda x: x, (0, 1, 2),
+                         lambda x: x)
+      i, j, k = lax.cond(M[2, 2] > M[i, i], (2, 0, 1), lambda x: x, (i, j, k),
+                         lambda x: x)
+      t = M[i, i] - (M[j, j] + M[k, k]) + M[3, 3]
+      qtemp = qtemp.at[i].set(t)
+      qtemp = qtemp.at[j].set(M[i, j] + M[j, i])
+      qtemp = qtemp.at[k].set(M[k, i] + M[i, k])
+      qtemp = qtemp.at[3].set(M[k, j] - M[j, k])
+      qtemp = qtemp[jnp.array([3, 0, 1, 2])]
+      return qtemp, t
+
+    q, t = lax.cond(t > M[3, 3], (M, t), case1, (M, t, q), case2)
     """
-    M = jnp.array(matrix, dtype=jnp.float64, copy=False)[:4, :4]
-    if isprecise:
-      q = jnp.empty((4, ))
-      t = jnp.trace(M)
-      
-      def case1(Mt):
-        M, t = Mt
-        return jnp.array([t,
-          M[2, 1] - M[1, 2],
-          M[0, 2] - M[2, 0],
-          M[1, 0] - M[0, 1]]), t
-      def case2(Mtq):
-        M, t, qtemp = Mtq
-        i, j, k = lax.cond( M[1,1] > M[0,0],
-            (1,2,0), lambda x: x,
-            (0,1,2), lambda x: x)
-        i, j, k = lax.cond( M[2,2] > M[i,i],
-            (2,0,1), lambda x: x,
-            (i,j,k), lambda x: x)
-        t = M[i, i] - (M[j, j] + M[k, k]) + M[3, 3]
-        qtemp = qtemp.at[i].set(t)
-        qtemp = qtemp.at[j].set(M[i, j] + M[j, i])
-        qtemp = qtemp.at[k].set(M[k, i] + M[i, k])
-        qtemp = qtemp.at[3].set(M[k, j] - M[j, k])
-        qtemp = qtemp[jnp.array([3, 0, 1, 2])]
-        return qtemp, t
-      
-      q, t = lax.cond(t > M[3, 3],
-          (M,t), case1,
-          (M,t,q), case2)
-
-
-
-      """
       if t > M[3, 3]:
         q = jnp.array([t,
           M[2, 1] - M[1, 2],
@@ -706,33 +702,31 @@ def quaternion_from_matrix(matrix, isprecise=False):
         #q[3] = M[k, j] - M[j, k]
         q = q[[3, 0, 1, 2]]
       """
-      q = q * (0.5 / jnp.sqrt(t * M[3, 3]))
-    else:
-      m00 = M[0, 0]
-      m01 = M[0, 1]
-      m02 = M[0, 2]
-      m10 = M[1, 0]
-      m11 = M[1, 1]
-      m12 = M[1, 2]
-      m20 = M[2, 0]
-      m21 = M[2, 1]
-      m22 = M[2, 2]
-      # symmetric matrix K
-      K = jnp.array([[m00-m11-m22, 0.0,         0.0,         0.0],
-                       [m01+m10,     m11-m00-m22, 0.0,         0.0],
-                       [m02+m20,     m12+m21,     m22-m00-m11, 0.0],
-                       [m21-m12,     m02-m20,     m10-m01,     m00+m11+m22]])
-      K /= 3.0
-      # quaternion is eigenvector of K that corresponds to largest eigenvalue
-      w, V = jnp.linalg.eigh(K, UPLO='L', symmetrize_input=False)
-      q = V[[3, 0, 1, 2], jnp.argmax(w)]
-    #q = q * jnp.sign(q[0])
-    q = lax.cond( q[0] < 0.0,
-        -1.0 * q, lambda x: x,
-        q, lambda x: x)
-    #if q[0] < 0.0:
-    #  q = jnp.negative(q)
-    return q
+    q = q * (0.5 / jnp.sqrt(t * M[3, 3]))
+  else:
+    m00 = M[0, 0]
+    m01 = M[0, 1]
+    m02 = M[0, 2]
+    m10 = M[1, 0]
+    m11 = M[1, 1]
+    m12 = M[1, 2]
+    m20 = M[2, 0]
+    m21 = M[2, 1]
+    m22 = M[2, 2]
+    # symmetric matrix K
+    K = jnp.array([[m00 - m11 - m22, 0.0, 0.0, 0.0],
+                   [m01 + m10, m11 - m00 - m22, 0.0, 0.0],
+                   [m02 + m20, m12 + m21, m22 - m00 - m11, 0.0],
+                   [m21 - m12, m02 - m20, m10 - m01, m00 + m11 + m22]])
+    K /= 3.0
+    # quaternion is eigenvector of K that corresponds to largest eigenvalue
+    w, V = jnp.linalg.eigh(K, UPLO='L', symmetrize_input=False)
+    q = V[[3, 0, 1, 2], jnp.argmax(w)]
+  #q = q * jnp.sign(q[0])
+  q = lax.cond(q[0] < 0.0, -1.0 * q, lambda x: x, q, lambda x: x)
+  #if q[0] < 0.0:
+  #  q = jnp.negative(q)
+  return q
 
 
 def quaternion_multiply(quaternion1, quaternion0):
@@ -742,10 +736,11 @@ def quaternion_multiply(quaternion1, quaternion0):
   w0, x0, y0, z0 = quaternion0
   w1, x1, y1, z1 = quaternion1
   return jnp.array([
-      -x1*x0 - y1*y0 - z1*z0 + w1*w0,
-      x1*w0 + y1*z0 - z1*y0 + w1*x0,
-      -x1*z0 + y1*w0 + z1*x0 + w1*y0,
-      x1*y0 - y1*x0 + z1*w0 + w1*z0], dtype=jnp.float64)
+      -x1 * x0 - y1 * y0 - z1 * z0 + w1 * w0, x1 * w0 + y1 * z0 - z1 * y0 +
+      w1 * x0, -x1 * z0 + y1 * w0 + z1 * x0 + w1 * y0,
+      x1 * y0 - y1 * x0 + z1 * w0 + w1 * z0
+  ],
+                   dtype=jnp.float64)
 
 
 def quaternion_conjugate(quaternion):
@@ -789,75 +784,10 @@ def quaternion_slerp(quat0, quat1, fraction, spin=0, shortestpath=True):
   raise NotImplementedError
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #############################################
 ################### Helpers #################
 #############################################
+
 
 def random_quaternion(rand=None, key=None):
   """Return uniform random unit quaternion.
@@ -873,15 +803,15 @@ def random_quaternion(rand=None, key=None):
   If both rand and key are None, fall back to onp.random
 
   """
-  if(rand is None and key is None):
+  if (rand is None and key is None):
     rnd = jnp.array(onp.random.rand(3), dtype=jnp.float64)
 
-  elif(rand is None):
+  elif (rand is None):
     rnd = random.uniform(key, (3,), minval=0.0, maxval=1.0, dtype=jnp.float64)
-    
+
   else:
     rnd = jnp.array(rand, dtype=jnp.float64)
-    assert(rnd.shape == (3,))
+    assert (rnd.shape == (3,))
     #assert len(rnd) == 3
 
   r1 = jnp.sqrt(1.0 - rnd[0])
@@ -889,8 +819,11 @@ def random_quaternion(rand=None, key=None):
   pi2 = jnp.pi * 2.0
   t1 = pi2 * rnd[1]
   t2 = pi2 * rnd[2]
-  return jnp.array([jnp.cos(t2)*r2, jnp.sin(t1)*r1,
-                      jnp.cos(t1)*r1, jnp.sin(t2)*r2])
+  return jnp.array(
+      [jnp.cos(t2) * r2,
+       jnp.sin(t1) * r1,
+       jnp.cos(t1) * r1,
+       jnp.sin(t2) * r2])
 
 
 def random_rotation_matrix(rand=None, key=None):
@@ -912,23 +845,33 @@ _NEXT_AXIS = [1, 2, 0, 1]
 
 # map axes strings to/from tuples of inner axis, parity, repetition, frame
 _AXES2TUPLE = {
-    'sxyz': (0, 0, 0, 0), 'sxyx': (0, 0, 1, 0), 'sxzy': (0, 1, 0, 0),
-    'sxzx': (0, 1, 1, 0), 'syzx': (1, 0, 0, 0), 'syzy': (1, 0, 1, 0),
-    'syxz': (1, 1, 0, 0), 'syxy': (1, 1, 1, 0), 'szxy': (2, 0, 0, 0),
-    'szxz': (2, 0, 1, 0), 'szyx': (2, 1, 0, 0), 'szyz': (2, 1, 1, 0),
-    'rzyx': (0, 0, 0, 1), 'rxyx': (0, 0, 1, 1), 'ryzx': (0, 1, 0, 1),
-    'rxzx': (0, 1, 1, 1), 'rxzy': (1, 0, 0, 1), 'ryzy': (1, 0, 1, 1),
-    'rzxy': (1, 1, 0, 1), 'ryxy': (1, 1, 1, 1), 'ryxz': (2, 0, 0, 1),
-    'rzxz': (2, 0, 1, 1), 'rxyz': (2, 1, 0, 1), 'rzyz': (2, 1, 1, 1)}
+    'sxyz': (0, 0, 0, 0),
+    'sxyx': (0, 0, 1, 0),
+    'sxzy': (0, 1, 0, 0),
+    'sxzx': (0, 1, 1, 0),
+    'syzx': (1, 0, 0, 0),
+    'syzy': (1, 0, 1, 0),
+    'syxz': (1, 1, 0, 0),
+    'syxy': (1, 1, 1, 0),
+    'szxy': (2, 0, 0, 0),
+    'szxz': (2, 0, 1, 0),
+    'szyx': (2, 1, 0, 0),
+    'szyz': (2, 1, 1, 0),
+    'rzyx': (0, 0, 0, 1),
+    'rxyx': (0, 0, 1, 1),
+    'ryzx': (0, 1, 0, 1),
+    'rxzx': (0, 1, 1, 1),
+    'rxzy': (1, 0, 0, 1),
+    'ryzy': (1, 0, 1, 1),
+    'rzxy': (1, 1, 0, 1),
+    'ryxy': (1, 1, 1, 1),
+    'ryxz': (2, 0, 0, 1),
+    'rzxz': (2, 0, 1, 1),
+    'rxyz': (2, 1, 0, 1),
+    'rzyz': (2, 1, 1, 1)
+}
 
 _TUPLE2AXES = dict((v, k) for k, v in _AXES2TUPLE.items())
-
-
-
-
-
-
-
 
 
 def vector_norm(data, axis=None, out=None):
@@ -945,10 +888,11 @@ def vector_norm(data, axis=None, out=None):
     out = jnp.atleast_1d(jnp.sum(data, axis=axis))
     return jnp.sqrt(out)
   else:
-    assert(False)
+    assert (False)
     #data *= data
     #numpy.sum(data, axis=axis, out=out)
     #numpy.sqrt(out, out)
+
 
 def unit_vector(data, axis=None, out=None):
   """Return ndarray normalized by length, i.e. Euclidean norm, along axis.
@@ -962,11 +906,11 @@ def unit_vector(data, axis=None, out=None):
       data /= jnp.sqrt(jnp.dot(data, data))
       return data
   else:
-    assert(False)
+    assert (False)
     #if out is not data:
     #  out[:] = numpy.array(data, copy=False)
     #data = out
-  length = jnp.atleast_1d(jnp.sum(data*data, axis))
+  length = jnp.atleast_1d(jnp.sum(data * data, axis))
   #jnp.sqrt(length, length)
   length = jnp.sqrt(length)
   if axis is not None:
@@ -982,23 +926,22 @@ def random_vector(shape, key=None):
   This cannot be jitted, not 100% sure why
 
   """
-  if(not isinstance(shape, tuple)):
+  if (not isinstance(shape, tuple)):
     shape = (shape,)
 
-  if(key is None):
+  if (key is None):
     return jnp.array(onp.random.random(shape), dtype=jnp.float64)
   else:
     return random.uniform(key, shape, minval=0.0, maxval=1.0, dtype=jnp.float64)
 
 
-
 def vector_product(v0, v1, axis=0):
-    """Return vector perpendicular to vectors.
+  """Return vector perpendicular to vectors.
 
     """
-    v0 = jnp.array(v0)
-    v1 = jnp.array(v1)
-    return jnp.cross(v0, v1, axis=axis)
+  v0 = jnp.array(v0)
+  v1 = jnp.array(v1)
+  return jnp.cross(v0, v1, axis=axis)
 
 
 def angle_between_vectors(v0, v1, directed=True, axis=0):
@@ -1029,7 +972,7 @@ def concatenate_matrices(*matrices):
   """
   M = jnp.identity(4)
   for i in matrices:
-      M = jnp.dot(M, i)
+    M = jnp.dot(M, i)
   return M
 
 
@@ -1053,19 +996,9 @@ def is_same_quaternion(q0, q1):
   return jnp.allclose(q0, q1) or jnp.allclose(q0, -q1)
 
 
-
-
-
-
-
-
-
-
-
 #############################################
 ############ New functionality ##############
 #############################################
-
 
 
 def matrix_apply(M, v):
@@ -1082,15 +1015,19 @@ def matrix_apply(M, v):
       v.shape.
   """
 
-  assert(M.shape == (4,4))
+  assert (M.shape == (4, 4))
 
-  if(v.shape[-1]==4):
-    return jnp.matmul(M,v.T).T
-  elif(v.shape[-1]==3):
-    vtemp = jnp.pad(jnp.atleast_2d(v),((0,0),(0,1)), mode='constant', constant_values=1.0)
-    return jnp.reshape((jnp.matmul(M,vtemp.T)[:3]).T,v.shape)
+  if (v.shape[-1] == 4):
+    return jnp.matmul(M, v.T).T
+  elif (v.shape[-1] == 3):
+    vtemp = jnp.pad(
+        jnp.atleast_2d(v), ((0, 0), (0, 1)),
+        mode='constant',
+        constant_values=1.0)
+    return jnp.reshape((jnp.matmul(M, vtemp.T)[:3]).T, v.shape)
   else:
     raise AssertionError('v must have shape (m,3) or (m,4) or (3,) or (4,)')
+
 
 def quaternion_apply(q, v, index_start=0):
   """ Rotate a vector or array of vectors by a quaternion.
@@ -1119,40 +1056,43 @@ def quaternion_apply(q, v, index_start=0):
 
   """
 
-  if( not (len(q.shape) == 1 or len(q.shape) == 2) ):
+  if (not (len(q.shape) == 1 or len(q.shape) == 2)):
     raise ValueError('q must either have 1 or 2 dimensions')
-  if( q.shape[-1] != 4 ):
+  if (q.shape[-1] != 4):
     raise ValueError('last dimension of q must have length 4')
-  if( not (len(v.shape) == 1 or len(v.shape) == 2) ):
+  if (not (len(v.shape) == 1 or len(v.shape) == 2)):
     raise ValueError('v must either have 1 or 2 dimensions')
-  if( v.shape[-1] < 3 ):
-    raise ValueError('last dimension of v must have length greater than or equal to 3')
-  if( len(v.shape) == 2 and len(q.shape) == 2):
-    if( v.shape[0] != q.shape[0]):
+  if (v.shape[-1] < 3):
+    raise ValueError(
+        'last dimension of v must have length greater than or equal to 3')
+  if (len(v.shape) == 2 and len(q.shape) == 2):
+    if (v.shape[0] != q.shape[0]):
       raise ValueError('incompatible number of quaternions and vectors')
 
-  def qapply(quat,vec):
-    vec_as_quat = jnp.pad(vec[index_start:index_start+3], (1,0), mode='constant',  constant_values=0.)
+  def qapply(quat, vec):
+    vec_as_quat = jnp.pad(
+        vec[index_start:index_start + 3], (1, 0),
+        mode='constant',
+        constant_values=0.)
     #COMMENT(cpgoodri): it might be more efficient to do this by hand
     vec_rot = quaternion_multiply(
-        quat,quaternion_multiply(vec_as_quat,quaternion_conjugate(quat)))[1:]
-    return vec.at[index_start:index_start+3].set(vec_rot)
+        quat, quaternion_multiply(vec_as_quat, quaternion_conjugate(quat)))[1:]
+    return vec.at[index_start:index_start + 3].set(vec_rot)
     #return index_update(vec, index[index_start:index_start+3], vec_rot)
 
-
-  if( len(q.shape) == 1 and len(v.shape) == 1 ):
+  if (len(q.shape) == 1 and len(v.shape) == 1):
     apply_fn = qapply
-  elif( len(q.shape) == 2 and len(v.shape) == 1 ):
-    apply_fn = vmap(qapply,in_axes=(0,None))
-  elif( len(q.shape) == 1 and len(v.shape) == 2 ):
-    apply_fn = vmap(qapply,in_axes=(None,0))
-  elif( len(q.shape) == 2 and len(v.shape) == 2 ):
-    apply_fn = vmap(qapply,in_axes=(0,0))
+  elif (len(q.shape) == 2 and len(v.shape) == 1):
+    apply_fn = vmap(qapply, in_axes=(0, None))
+  elif (len(q.shape) == 1 and len(v.shape) == 2):
+    apply_fn = vmap(qapply, in_axes=(None, 0))
+  elif (len(q.shape) == 2 and len(v.shape) == 2):
+    apply_fn = vmap(qapply, in_axes=(0, 0))
   else:
     raise AssertionError('Should be impossible to get here.')
 
   return apply_fn(q, v)
-  
+
   #if(len(q.shape) == 1):
   #  apply_fn = vmap(qapply,in_axes=(None,0))
   #elif(len(q.shape) == 2):
@@ -1160,12 +1100,3 @@ def quaternion_apply(q, v, index_start=0):
   #else:
   #  raise ValueError('q must have shape (4,) or (m,4)')
   #return jnp.reshape(apply_fn(q, jnp.atleast_2d(v)),v.shape)
-
-
-
-
-
-
-
-
-
