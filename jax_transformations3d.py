@@ -1,6 +1,5 @@
 import numpy as onp
 import jax.numpy as jnp
-from jax.ops import index, index_add, index_update
 from jax import lax, vmap, random
 import math
 
