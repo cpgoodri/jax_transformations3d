@@ -325,13 +325,11 @@ class TransformationsTest(jtu.JaxTestCase):
     v0 = jnp.array([[0, 1031, 1031, 0], [0, 0, 1600, 1600]])
     v1 = jnp.array([[675, 826, 826, 677], [55, 52, 281, 277]])
     M = affine_matrix_from_points(v0, v1)
-    M_ref = jnp.array([[   0.14549,    0.00062,  675.50008],
-                       [   0.00048,    0.14094,   53.24971],
-                       [   0.     ,    0.     ,    1.     ]])
-    self.assertAllClose(M, M_ref, atol=1e-4, rtol = 1e-4)
+    M_ref = jnp.array([[0.14549, 0.00062, 675.50008],
+                       [0.00048, 0.14094, 53.24971], [0., 0., 1.]])
+    self.assertAllClose(M, M_ref, atol=1e-4, rtol=1e-4)
 
-
-    T = translation_matrix(onp.random.random(3)-0.5)
+    T = translation_matrix(onp.random.random(3) - 0.5)
     R = random_rotation_matrix(onp.random.random(3))
     S = scale_matrix(onp.random.random())
     M = concatenate_matrices(T, R, S)
@@ -346,13 +344,11 @@ class TransformationsTest(jtu.JaxTestCase):
     v0 = jnp.array([[0, 1031, 1031, 0], [0, 0, 1600, 1600]])
     v1 = jnp.array([[675, 826, 826, 677], [55, 52, 281, 277]])
     M = jit(affine_matrix_from_points)(v0, v1)
-    M_ref = jnp.array([[   0.14549,    0.00062,  675.50008],
-                       [   0.00048,    0.14094,   53.24971],
-                       [   0.     ,    0.     ,    1.     ]])
-    self.assertAllClose(M, M_ref, atol=1e-4, rtol = 1e-4)
+    M_ref = jnp.array([[0.14549, 0.00062, 675.50008],
+                       [0.00048, 0.14094, 53.24971], [0., 0., 1.]])
+    self.assertAllClose(M, M_ref, atol=1e-4, rtol=1e-4)
 
-
-    T = translation_matrix(onp.random.random(3)-0.5)
+    T = translation_matrix(onp.random.random(3) - 0.5)
     R = random_rotation_matrix(onp.random.random(3))
     S = scale_matrix(onp.random.random())
     M = concatenate_matrices(T, R, S)
@@ -362,6 +358,73 @@ class TransformationsTest(jtu.JaxTestCase):
     v0[:3] += onp.random.normal(0, 1e-8, 300).reshape(3, -1)
     M = jit(affine_matrix_from_points)(jnp.array(v0[:3]), jnp.array(v1[:3]))
     self.assertAllClose(v1, jnp.dot(M, v0), atol=1e-6, rtol=1e-6)
+
+  def test_superimposition_matrix(self):
+    v0 = onp.random.rand(3, 10)
+    M = superimposition_matrix(v0, v0)
+    self.assertAllClose(M, jnp.identity(4))
+
+    R = random_rotation_matrix(onp.random.random(3))
+    v0 = [[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 1]]
+    v1 = onp.dot(R, v0)
+    M = superimposition_matrix(v0, v1)
+    self.assertAllClose(v1, onp.dot(M, v0))
+
+    v0 = (onp.random.rand(4, 100) - 0.5) * 20
+    v0[3] = 1
+    v1 = onp.dot(R, v0)
+    M = superimposition_matrix(v0, v1)
+    self.assertAllClose(v1, onp.dot(M, v0), atol=1e-12, rtol=1e-12)
+
+    S = scale_matrix(onp.random.random())
+    T = translation_matrix(onp.random.random(3) - 0.5)
+    M = concatenate_matrices(T, R, S)
+    v1 = onp.dot(M, v0)
+    v0[:3] += onp.random.normal(0, 1e-9, 300).reshape(3, -1)
+    M = superimposition_matrix(v0, v1, scale=True)
+    self.assertAllClose(v1, onp.dot(M, v0), atol=1e-9, rtol=1e-7)
+
+    #M = superimposition_matrix(v0, v1, scale=True, usesvd=False)
+    #self.assertAllClose(v1, onp.dot(M, v0))
+
+    #v = onp.empty((4, 100, 3))
+    #v[:, :, 0] = v0
+    #M = superimposition_matrix(v0, v1, scale=True, usesvd=False)
+    #self.assertAllClose(v1, onp.dot(M, v[:, :, 0]))
+
+  def test_jit_superimposition_matrix(self):
+    v0 = onp.random.rand(3, 10)
+    v0 = jnp.array(v0)
+    M = jit(superimposition_matrix)(v0, v0)
+    self.assertAllClose(M, jnp.identity(4), atol=1e-14, rtol=1e-14)
+
+    R = random_rotation_matrix(onp.random.random(3))
+    v0 = [[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 1]]
+    v1 = onp.dot(R, v0)
+    M = jit(superimposition_matrix)(v0, v1)
+    self.assertAllClose(v1, onp.dot(M, v0))
+
+    v0 = (onp.random.rand(4, 100) - 0.5) * 20
+    v0[3] = 1
+    v1 = onp.dot(R, v0)
+    M = jit(superimposition_matrix)(v0, v1)
+    self.assertAllClose(v1, onp.dot(M, v0), atol=1e-12, rtol=1e-12)
+
+    S = scale_matrix(onp.random.random())
+    T = translation_matrix(onp.random.random(3) - 0.5)
+    M = concatenate_matrices(T, R, S)
+    v1 = onp.dot(M, v0)
+    v0[:3] += onp.random.normal(0, 1e-9, 300).reshape(3, -1)
+    M = jit(superimposition_matrix, static_argnames='scale')(v0, v1, scale=True)
+    self.assertAllClose(v1, onp.dot(M, v0), atol=1e-9, rtol=1e-7)
+
+    #M = superimposition_matrix(v0, v1, scale=True, usesvd=False)
+    #self.assertAllClose(v1, onp.dot(M, v0))
+
+    #v = onp.empty((4, 100, 3))
+    #v[:, :, 0] = v0
+    #M = superimposition_matrix(v0, v1, scale=True, usesvd=False)
+    #self.assertAllClose(v1, onp.dot(M, v[:, :, 0]))
 
   def test_euler_matrix(self):
     """

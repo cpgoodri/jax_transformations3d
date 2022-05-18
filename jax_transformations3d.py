@@ -399,6 +399,9 @@ def affine_matrix_from_points(v0, v1, shear=True, scale=True, usesvd=True):
   (if specified).
   """
 
+  if usesvd == False:
+    print("WARNING: possible bug when setting usesvd to False")
+
   v0 = jnp.array(v0, dtype=jnp.float64, copy=True)
   v1 = jnp.array(v1, dtype=jnp.float64, copy=True)
 
@@ -433,11 +436,20 @@ def affine_matrix_from_points(v0, v1, shear=True, scale=True, usesvd=True):
     u, s, vh = jnp.linalg.svd(jnp.dot(v1, v0.T))
     # rotation matrix from SVD orthonormal bases
     R = jnp.dot(u, vh)
-    if jnp.linalg.det(R) < 0.0:
-      # R does not constitute right handed system
+
+    def tempfn(R_s):
+      R, s = R_s
       R = R - jnp.outer(u[:, ndims - 1], vh[ndims - 1, :] * 2.0)
       s = s.at[-1].multiply(-1.0)
-      #s[-1] *= -1.0
+      return (R, s)
+
+    R, s = lax.cond(jnp.linalg.det(R) < 0.0, tempfn, lambda R_s: R_s, (R, s))
+
+    #if jnp.linalg.det(R) < 0.0:
+    #  # R does not constitute right handed system
+    #  R = R - jnp.outer(u[:, ndims - 1], vh[ndims - 1, :] * 2.0)
+    #  s = s.at[-1].multiply(-1.0)
+    #  #s[-1] *= -1.0
     # homogeneous transformation matrix
     M = jnp.identity(ndims + 1)
     M = M.at[:ndims, :ndims].set(R)
@@ -452,7 +464,7 @@ def affine_matrix_from_points(v0, v1, shear=True, scale=True, usesvd=True):
          [zx - xz, xy + yx, yy - xx - zz, 0.0],
          [xy - yx, zx + xz, yz + zy, zz - xx - yy]]
     # quaternion: eigenvector corresponding to most positive eigenvalue
-    w, V = jnp.linalg.eigh(jnp.array(N))
+    w, V = jnp.linalg.eigh(jnp.array(N, dtype=jnp.float64))
     q = V[:, jnp.argmax(w)]
     q = q / vector_norm(q)  # unit quaternion
     # homogeneous transformation matrix
@@ -462,7 +474,7 @@ def affine_matrix_from_points(v0, v1, shear=True, scale=True, usesvd=True):
     # Affine transformation; scale is ratio of RMS deviations from centroid
     v0 = v0 * v0
     v1 = v1 * v1
-    M = M.at[:ndims, :ndims].multiply(math.sqrt(jnp.sum(v1) / jnp.sum(v0)))
+    M = M.at[:ndims, :ndims].multiply(jnp.sqrt(jnp.sum(v1) / jnp.sum(v0)))
     #M[:ndims, :ndims] *= math.sqrt(jnp.sum(v1) / jnp.sum(v0))
 
   # move centroids back
@@ -472,8 +484,21 @@ def affine_matrix_from_points(v0, v1, shear=True, scale=True, usesvd=True):
 
 
 def superimposition_matrix(v0, v1, scale=False, usesvd=True):
-  print("WARNING: not implemented.")
-  raise NotImplementedError
+  """Return matrix to transform given 3D point set into second point set.
+
+    v0 and v1 are shape (3, \*) or (4, \*) arrays of at least 3 points.
+
+    The parameters scale and usesvd are explained in the more general
+    affine_matrix_from_points function.
+
+    The returned matrix is a similarity or Euclidean transformation matrix.
+    This function has a fast C implementation in transformations.c.
+    """
+
+  v0 = jnp.array(v0, dtype=jnp.float64, copy=False)[:3]
+  v1 = jnp.array(v1, dtype=jnp.float64, copy=False)[:3]
+  return affine_matrix_from_points(
+      v0, v1, shear=False, scale=scale, usesvd=usesvd)
 
 
 def euler_matrix(ai, aj, ak, axes='sxyz'):
