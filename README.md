@@ -29,8 +29,8 @@ Implementation of original Functionality:
 `decompose_matrix(matrix)` | | |
 `compose_matrix(scale=None, shear=None, angles=None, translate=None, perspective=None)` | | |
 `orthogonalization_matrix(lengths, angles)` | | |
-`affine_matrix_from_points(v0, v1, shear=True, scale=True, usesvd=True)` | | |
-`superimposition_matrix(v0, v1, scale=False, usesvd=True)` | | |
+`affine_matrix_from_points(v0, v1, shear=True, scale=True, usesvd=True)` | X*** | X*** |
+`superimposition_matrix(v0, v1, scale=False, usesvd=True)` | X*** | X*** |
 `euler_matrix(ai, aj, ak, axes='sxyz')` | X | X |
 `euler_from_matrix(matrix, axes='sxyz')` | X | X |
 `euler_from_quaternion(quaternion, axes='sxyz')` | X | X |
@@ -60,6 +60,8 @@ Implementation of original Functionality:
 \*Only implemented for `out=None`
 
 \*\*Need to add tests
+
+\*\*\*Possible bug when `usesvd=False`
 
 
 New Functionality:
