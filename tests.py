@@ -704,6 +704,45 @@ class TransformationsTest(jtu.JaxTestCase):
         jit(quaternion_imag)([3, 0, 1, 2]),
         jnp.array([0., 1., 2.], dtype=jnp.float64))
 
+  def test_quaternion_slerp(self):
+    q0 = random_quaternion()
+    q1 = random_quaternion()
+    q = quaternion_slerp(q0, q1, 0)
+    self.assertTrue(jnp.allclose(q, q0) or jnp.allclose(-q, q0))
+    q = quaternion_slerp(q0, q1, 1)
+    self.assertTrue(jnp.allclose(q, q1) or jnp.allclose(-q, q1))
+    q = quaternion_slerp(q0, q1, 0.5)
+    angle = jnp.arccos(jnp.dot(q0, q))
+    self.assertTrue(jnp.allclose(2, jnp.arccos(jnp.dot(q0, q1)) / angle) or
+                    jnp.allclose(2, jnp.arccos(-jnp.dot(q0, q1)) / angle))
+    q = quaternion_slerp(q0, q0, 0)
+    self.assertAllClose(q, q0)
+    q = quaternion_slerp(q0, q0, 1)
+    self.assertAllClose(q, q0)
+    q = quaternion_slerp(q0, q0, 0.5)
+    self.assertAllClose(q, q0)
+
+  def test_jit_quaternion_slerp(self):
+    key0, key1 = random.PRNGKey(0).split()
+
+    q0 = random_quaternion(key=key0)
+    q1 = random_quaternion(key=key1)
+    jit_quaternion_slerp = jit(quaternion_slerp)
+    q = jit_quaternion_slerp(q0, q1, 0)
+    self.assertTrue(jnp.allclose(q, q0) or jnp.allclose(-q, q0))
+    q = jit_quaternion_slerp(q0, q1, 1)
+    self.assertTrue(jnp.allclose(q, q1) or jnp.allclose(-q, q1))
+    q = jit_quaternion_slerp(q0, q1, 0.5)
+    angle = jnp.arccos(jnp.dot(q0, q))
+    self.assertTrue(jnp.allclose(2, jnp.arccos(jnp.dot(q0, q1)) / angle) or
+                    jnp.allclose(2, jnp.arccos(-jnp.dot(q0, q1)) / angle))
+    q = jit_quaternion_slerp(q0, q0, 0)
+    self.assertAllClose(q, q0)
+    q = jit_quaternion_slerp(q0, q0, 1)
+    self.assertAllClose(q, q0)
+    q = jit_quaternion_slerp(q0, q0, 0.5)
+    self.assertAllClose(q, q0)
+
   def test_random_quaternion(self):
     q = random_quaternion()
     self.assertAllClose(1.0, vector_norm(q), check_dtypes=False)
