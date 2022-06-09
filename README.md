@@ -43,7 +43,7 @@ Implementation of original Functionality:
 `quaternion_inverse(quaternion)` | X | X |
 `quaternion_real(quaternion)` | X | X |
 `quaternion_imag(quaternion)` | X | X |
-`quaternion_slerp(quat0, quat1, fraction)` | X | X |
+`quaternion_slerp(quat0, quat1, fraction)` | X**** | X**** |
 `random_quaternion(rand=None, key=None)` | X | X |
 `random_rotation_matrix(rand=None, key=None)` | X | X |
 `class Arcball` and related methods | | |
@@ -62,6 +62,8 @@ Implementation of original Functionality:
 \*\*Need to add tests
 
 \*\*\*Possible bug when `usesvd=False`
+
+\*\*\*\*Removed `spin` and `shortestpath` arguments
 
 
 New Functionality:

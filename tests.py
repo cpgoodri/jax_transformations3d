@@ -723,7 +723,7 @@ class TransformationsTest(jtu.JaxTestCase):
     self.assertAllClose(q, q0)
 
   def test_jit_quaternion_slerp(self):
-    key0, key1 = random.PRNGKey(0).split()
+    key0, key1 = random.split(random.PRNGKey(0))
 
     q0 = random_quaternion(key=key0)
     q1 = random_quaternion(key=key1)
