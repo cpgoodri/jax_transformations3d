@@ -891,9 +891,34 @@ def quaternion_imag(quaternion):
   return jnp.array(quaternion[1:4], dtype=jnp.float64, copy=True)
 
 
-def quaternion_slerp(quat0, quat1, fraction, spin=0, shortestpath=True):
-  print("WARNING: not implemented.")
-  raise NotImplementedError
+def quaternion_slerp(quat0, quat1, fraction):
+  """Return spherical linear interpolation between two quaternions.
+
+  >>> q0 = random_quaternion()
+  >>> q1 = random_quaternion()
+  >>> q = quaternion_slerp(q0, q1, 0)
+  >>> jax.numpy.allclose(q, q0)
+  True
+  >>> q = quaternion_slerp(q0, q1, 1, 1)
+  >>> jax.numpy.allclose(q, q1)
+  True
+  >>> q = quaternion_slerp(q0, q1, 0.5)
+  >>> angle = jax.numpy.arccos(numpy.dot(q0, q))
+  >>> jax.numpy.allclose(2, jax.numpy.arccos(jax.numpy.dot(q0, q1)) / angle) or \
+      jax.numpy.allclose(2, jax.numpy.arccos(-jax.numpy.dot(q0, q1)) / angle)
+  True
+
+  """
+  q0 = unit_vector(quat0[:4])
+  q1 = unit_vector(quat1[:4])
+  d = jnp.dot(q0, q1)
+  d_sign = 2.*(d >= 0.) - 1.  # alternative to jnp.sign to properly handle 0
+  d *= d_sign
+  q1 *= d_sign
+  angle = jnp.arccos(jnp.minimum(d, 1.0))
+  isin = 1.0 / jnp.sin(angle)
+  qi = q0*(jnp.sin((1.0 - fraction) * angle) * isin) + q1*(jnp.sin(fraction * angle) * isin)
+  return jnp.where(angle > _EPS, qi, q0)
 
 
 #############################################
