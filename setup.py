@@ -9,7 +9,7 @@ with open("README.md", "r", encoding="utf-8") as readme_file:
 
 # Run setup
 setuptools.setup(
-    name="jax_transfomations3d",
+    name="jax_transformations3d",
     version="0.1.0",
     license="Apache-2.0",
     description="JAX compatible 3d transformations.",
