@@ -1,17 +1,30 @@
 # jax_transformations3d
 JAX compatible 3d transformations. Create and convert between 4x4 transformation matrices, quaternions and euler angles. Both the API and underlying code are heavily based on Christoph Gohlke's transformation package transformations.py, though there is some additional functionality and not all functions in transformations.py are implemented (yet). Documentation is currently lacking, please see tests.py for extensive examples. 
 
+Disclaimer: the current implementation, with a few exceptions, is a direct conversion of the original package to make it JAX-friendly. There are likely ways to improve the effienceny here, and contributions are welcome in this regard. 
+
 jax_transformations3d is under development, expect sharp edges and changes that break the current API.
 
 Suggestions, bugs, feature requests, and contributions are welcome!
 
+### Getting started
+The following will get you started in a jupyter notebook
+```
+#install jax_transformations3d
+!pip install -q git+https://github.com/cpgoodri/jax_transformations3d.git
+
+#import as jts
+from jax_transformations3d import jax_transformations3d as jts
+
+#do stuff
+print(jts.identity_matrix())
+```
 
 
+### Implementation of original Functionality:
 
-Implementation of original Functionality:
-
-|function | basic implementation | jit-tested | grad-tested | vmap-tested |
-| ------- |:--------------------:|:----------:|:-----------:|:-----------:|
+|function | basic implementation | jit-tested |
+| ------- |:--------------------:|:----------:|
 `identity_matrix()` | X | X | | |
 `translation_matrix(direction)` | X | X |
 `translation_from_matrix(matrix)` | X | X |
@@ -66,9 +79,9 @@ Implementation of original Functionality:
 \*\*\*\*Removed `spin` and `shortestpath` arguments
 
 
-New Functionality:
+### New Functionality:
 
-|function | basic implementation | jit-tested | grad-tested | vmap-tested |
-| ------- |:--------------------:|:----------:|:-----------:|:-----------:|
-`apply_matrix(M, v)` | X | X | | |
-`apply_quaternion(q, v)` | X | X | | |
+|function | basic implementation | jit-tested | 
+| ------- |:--------------------:|:----------:|
+`apply_matrix(M, v)` | X | X |
+`apply_quaternion(q, v)` | X | X |
